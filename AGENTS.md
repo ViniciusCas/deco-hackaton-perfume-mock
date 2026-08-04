@@ -40,3 +40,13 @@ but are silently discarded on the next regeneration/production build:
 - Cite files as `path:line` when explaining code.
 - Run `npm run typecheck` after TypeScript changes.
 - `npm run format` (Prettier) before committing `src/**` changes.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live as GitHub Issues on this repo's origin fork (ViniciusCas/deco-hackaton-perfume-mock), via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Domain docs
+
+Single-context layout (root `CONTEXT.md` + `docs/adr/`). See `docs/agents/domain.md`.
