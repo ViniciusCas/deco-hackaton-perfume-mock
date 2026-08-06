@@ -127,7 +127,8 @@ async function main() {
     throw new Error("Set DATABASE_URL (or ...HYPERDRIVE) in .dev.vars to run the seed script.");
   }
 
-  const client = postgres(connectionString, { max: 1, ssl: "require" });
+  const isLocalHost = /^postgres(ql)?:\/\/[^@]+@(localhost|127\.0\.0\.1)(:|\/)/.test(connectionString);
+  const client = postgres(connectionString, { max: 1, ssl: isLocalHost ? false : "require" });
   const db = drizzle(client);
 
   const rawEntries = raw as RawPerfume[];

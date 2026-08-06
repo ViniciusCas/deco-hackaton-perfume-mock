@@ -4,8 +4,8 @@
   "type": "module",
   "description": "Sillage storefront powered by TanStack Start",
   "scripts": {
-    "dev": "vite dev",
-    "dev:clean": "rm -rf node_modules/.vite .wrangler/state .tanstack && vite dev",
+    "dev": "bash -c 'set -a; source .dev.vars; set +a; vite dev'",
+    "dev:clean": "rm -rf node_modules/.vite .wrangler/state .tanstack && bash -c 'set -a; source .dev.vars; set +a; vite dev'",
     "generate:blocks": "bun node_modules/@decocms/blocks-cli/scripts/generate-blocks.ts",
     "generate:routes": "tsr generate",
     "generate:schema": "bun node_modules/@decocms/blocks-cli/scripts/generate-schema.ts --site sillage",

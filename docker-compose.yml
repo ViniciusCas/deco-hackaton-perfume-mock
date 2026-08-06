@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: sillage-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: localdev
+      POSTGRES_DB: sillage_dev
+    ports:
+      - "5433:5432"
+    volumes:
+      - sillage-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d sillage_dev"]
+      interval: 2s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  sillage-postgres-data:
