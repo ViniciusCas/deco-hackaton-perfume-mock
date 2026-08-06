@@ -4,6 +4,11 @@ export const MINICART_DRAWER_ID = "minicart-drawer";
 export const SIDEMENU_CONTAINER_ID = "sidemenu";
 export const SIDEMENU_DRAWER_ID = "sidemenu-drawer";
 
+// Dedicated search overlay — deliberately separate from SIDEMENU_DRAWER_ID
+// (the hamburger nav drawer). They used to share one panel, which meant
+// clicking the search icon opened the full nav "Menu" instead of a search box.
+export const SEARCH_OVERLAY_ID = "search-overlay";
+
 export const SEARCHBAR_INPUT_FORM_ID = "searchbar-form";
 
 export const USER_ID = "user-json";

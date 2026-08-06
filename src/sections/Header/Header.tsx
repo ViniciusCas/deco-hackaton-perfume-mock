@@ -5,12 +5,13 @@ import Alert from "../../components/header/Alert";
 import Bag from "../../components/header/Bag";
 import HeaderNav from "../../components/header/HeaderNav";
 import Menu from "../../components/header/Menu";
+import SearchOverlay from "../../components/header/SearchOverlay";
 import SignIn from "../../components/header/SignIn";
 import { type SearchbarProps } from "../../components/search/Searchbar/Form";
 import Drawer from "../../components/ui/Drawer";
 import Icon from "../../components/ui/Icon";
 import Image from "../../components/ui/Image";
-import { SIDEMENU_CONTAINER_ID, SIDEMENU_DRAWER_ID } from "../../constants";
+import { SEARCH_OVERLAY_ID, SIDEMENU_CONTAINER_ID, SIDEMENU_DRAWER_ID } from "../../constants";
 import { useDevice } from "@decocms/blocks/sdk/useDevice";
 import { type LoadingFallbackProps } from "~/types/deco";
 
@@ -95,7 +96,7 @@ const Desktop = ({ navItems, logo, siteName }: Props) => (
     </Link>
 
     <div className="flex items-center justify-self-end gap-1">
-      <label htmlFor={SIDEMENU_DRAWER_ID} aria-label="Search" className={ICON_BUTTON_CLASS}>
+      <label htmlFor={SEARCH_OVERLAY_ID} aria-label="Search" className={ICON_BUTTON_CLASS}>
         <Icon id="search" size={19} />
       </label>
       <SignIn />
@@ -119,7 +120,7 @@ const Mobile = ({ logo, siteName }: Props) => (
     </Link>
 
     <div className="flex items-center justify-self-end gap-1">
-      <label htmlFor={SIDEMENU_DRAWER_ID} aria-label="Search" className={ICON_BUTTON_CLASS}>
+      <label htmlFor={SEARCH_OVERLAY_ID} aria-label="Search" className={ICON_BUTTON_CLASS}>
         <Icon id="search" size={19} />
       </label>
       <Bag />
@@ -132,7 +133,7 @@ function Header({
   logo,
   siteName = "Sillage",
   navItems,
-  searchbar,
+  searchbar = { placeholder: "Search fragrances, brands, notes…" },
   loading,
   shippingNote = "Frete grátis em compras acima de R$500.",
   ...props
@@ -166,7 +167,7 @@ function Header({
                   <span className="loading loading-spinner" />
                 </div>
               ) : (
-                <Menu navItems={navItems ?? []} searchbar={searchbar} />
+                <Menu navItems={navItems ?? []} />
               )}
             </Drawer.Aside>
           }
@@ -191,6 +192,8 @@ function Header({
             {...props}
           />
         )}
+
+        <SearchOverlay searchbar={searchbar} />
       </div>
     </header>
   );

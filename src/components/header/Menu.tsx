@@ -1,11 +1,8 @@
 import Icon from "../../components/ui/Icon";
-import Searchbar, { type SearchbarProps } from "../search/Searchbar/Form";
 import type { SiteNavigationElement } from "@decocms/apps-commerce/types";
 
 export interface Props {
   navItems?: SiteNavigationElement[];
-  /** @description Rendered at the top of the menu, tucked behind the hamburger trigger */
-  searchbar?: SearchbarProps;
 }
 
 function MenuItem({ item }: { item: SiteNavigationElement }) {
@@ -33,14 +30,9 @@ function MenuItem({ item }: { item: SiteNavigationElement }) {
   );
 }
 
-function Menu({ navItems = [], searchbar }: Props) {
+function Menu({ navItems = [] }: Props) {
   return (
     <div className="flex h-full flex-col overflow-y-auto" style={{ minWidth: "100vw" }}>
-      {searchbar && (
-        <div className="border-b border-ink-soft/10">
-          <Searchbar {...searchbar} />
-        </div>
-      )}
       <ul className="flex grow flex-col divide-y divide-ink-soft/10 px-5">
         {navItems.map((item) => (
           <li key={item.url ?? item.name}>

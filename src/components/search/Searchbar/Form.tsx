@@ -1,20 +1,15 @@
 /**
- * Search form. Submits to /s?q=<term>; as the user types, suggestions are
- * fetched via HTMX (kept for now — the suggestions migration is its own task).
+ * Search bar — filters the local catalog client-side (this site has no
+ * search backend/loader; see ~/mocks/catalog). Typing shows a live
+ * dropdown of the top matches by name/brand/family/notes; Enter (or the
+ * search button) sends the full query to /fragrance, which applies the
+ * same match as an additional filter alongside family/brand/price.
  */
-import { useEffect, useId, useRef } from "react";
-import { Suggestion } from "@decocms/apps-commerce/types";
-import { SEARCHBAR_INPUT_FORM_ID, SIDEMENU_DRAWER_ID } from "../../../constants";
-import { useComponent } from "../../../sections/Component";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { CATALOG, type CatalogEntry } from "~/mocks/catalog";
+import { SEARCHBAR_INPUT_FORM_ID, SEARCH_OVERLAY_ID } from "../../../constants";
 import Icon from "../../ui/Icon";
-import { Props as SuggestionProps } from "./Suggestions";
-import { asResolved } from "~/types/deco";
-import { type Resolved } from "~/types/deco";
-
-// When user clicks on the search button, navigate it to
-export const ACTION = "/s";
-// Querystring param used when navigating the user
-export const NAME = "q";
 
 export interface SearchbarProps {
   /**
@@ -23,90 +18,141 @@ export interface SearchbarProps {
    * @default What are you looking for?
    */
   placeholder?: string;
-  /** @description Loader to run when suggesting new elements */
-  loader: Resolved<Suggestion | null>;
 }
 
-const Suggestions = "./Suggestions.tsx";
+const MAX_SUGGESTIONS = 6;
 
-export default function Searchbar({
-  placeholder = "What are you looking for?",
-  loader,
-}: SearchbarProps) {
-  const slot = useId();
+function matches(entry: CatalogEntry, needle: string): boolean {
+  const haystack = `${entry.name} ${entry.brand} ${entry.family} ${entry.notes}`.toLowerCase();
+  return haystack.includes(needle);
+}
+
+function closeSearchOverlay() {
+  const toggle = document.getElementById(SEARCH_OVERLAY_ID) as HTMLInputElement | null;
+  if (toggle) toggle.checked = false;
+}
+
+export default function Searchbar({ placeholder = "What are you looking for?" }: SearchbarProps) {
+  const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const navigate = useNavigate();
 
+  // The overlay this searchbar lives in is a CSS-only show/hide (a checkbox
+  // toggle) — this component mounts once, while it's still closed, so a
+  // plain `autoFocus` prop fires before the overlay ever opens and never
+  // fires again. Focus it for real each time the checkbox actually gets
+  // checked. (The overlay is transform/opacity-only, not `visibility:
+  // hidden`, so a direct focus() works — the animation-frame poll is just
+  // defensive in case that ever changes.)
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const isK = e.key === "k" || e.key === "K";
-      if (e.metaKey && isK) {
-        const drawer = document.getElementById(SIDEMENU_DRAWER_ID) as HTMLInputElement | null;
-        if (drawer) {
-          drawer.checked = true;
+    const toggle = document.getElementById(SEARCH_OVERLAY_ID) as HTMLInputElement | null;
+    const panel = toggle?.parentElement?.querySelector<HTMLElement>("[role='search']");
+    if (!toggle) return;
+
+    let raf = 0;
+    const onChange = () => {
+      if (!toggle.checked) return;
+      let attempts = 0;
+      const tryFocus = () => {
+        attempts += 1;
+        const visible = !panel || getComputedStyle(panel).visibility === "visible";
+        if (visible || attempts > 30) {
           inputRef.current?.focus();
+          return;
         }
-      }
+        raf = requestAnimationFrame(tryFocus);
+      };
+      raf = requestAnimationFrame(tryFocus);
     };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+
+    toggle.addEventListener("change", onChange);
+    return () => {
+      toggle.removeEventListener("change", onChange);
+      cancelAnimationFrame(raf);
+    };
   }, []);
 
-  const onSubmit = () => {
-    const term = inputRef.current?.value;
-    if (term) {
-      // `dispatch` exists at runtime (set up by the framework's DECO.events
-      // bootstrap), but @decocms/apps' ambient Window.DECO type only declares
-      // `subscribe`. Cast through the real shape to dispatch programmatically.
-      const events = window.DECO?.events as unknown as
-        { dispatch?: (event: unknown) => void } | undefined;
-      events?.dispatch?.({
-        name: "search",
-        params: { search_term: term },
-      });
-    }
+  const suggestions = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return [];
+    return CATALOG.filter((entry) => matches(entry, needle)).slice(0, MAX_SUGGESTIONS);
+  }, [query]);
+
+  const goToResults = () => {
+    const term = query.trim();
+    if (!term) return;
+    closeSearchOverlay();
+    navigate({ to: "/fragrance", search: { q: term } });
   };
 
   return (
-    <div className="w-full grid gap-8 px-4 py-6" style={{ gridTemplateRows: "min-content auto" }}>
+    <div className="w-full px-4 py-6">
       <form
         id={SEARCHBAR_INPUT_FORM_ID}
-        action={ACTION}
         className="flex items-center gap-3"
-        onSubmit={onSubmit}
+        onSubmit={(e) => {
+          e.preventDefault();
+          goToResults();
+        }}
       >
-        <button
-          type="submit"
-          className="btn btn-ghost btn-square no-animation shrink-0"
-          aria-label="Search"
-          form={SEARCHBAR_INPUT_FORM_ID}
-          tabIndex={-1}
-        >
-          <span className="loading loading-spinner loading-xs hidden [.htmx-request_&]:inline" />
-          <Icon id="search" className="inline [.htmx-request_&]:hidden" />
+        <button type="submit" className="shrink-0 text-ink" aria-label="Search">
+          <Icon id="search" size={19} />
         </button>
         <input
           ref={inputRef}
-          autoFocus
-          tabIndex={0}
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
           className="grow border-0 border-b border-ink/15 bg-transparent pb-2 text-base text-ink outline-none placeholder:text-muted focus:border-ink/40"
-          name={NAME}
+          name="q"
           placeholder={placeholder}
           autoComplete="off"
-          hx-target={`#${slot}`}
-          hx-post={
-            loader &&
-            useComponent<SuggestionProps>(Suggestions, {
-              loader: asResolved(loader),
-            })
-          }
-          hx-trigger={`input changed delay:300ms, ${NAME}`}
-          hx-indicator={`#${SEARCHBAR_INPUT_FORM_ID}`}
-          hx-swap="innerHTML"
         />
       </form>
 
-      {/* Suggestions slot */}
-      <div id={slot} />
+      {suggestions.length > 0 && (
+        <ul className="mt-4 flex flex-col gap-1">
+          {suggestions.map((entry) => (
+            <li key={entry.slug}>
+              <Link
+                to="/$"
+                params={{ _splat: entry.slug }}
+                preload="intent"
+                onClick={closeSearchOverlay}
+                className="tap-scale flex items-center gap-3 rounded-sm px-2 py-2 transition-colors duration-(--duration-fast) hover:bg-white/60"
+              >
+                <div className="h-12 w-9 shrink-0 overflow-hidden rounded-xs bg-blush-deep">
+                  <img
+                    src={entry.image}
+                    alt=""
+                    loading="lazy"
+                    referrerPolicy="no-referrer"
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-medium text-ink">{entry.name}</div>
+                  <div className="truncate text-xs text-muted">
+                    {entry.brand} · {entry.family}
+                  </div>
+                </div>
+              </Link>
+            </li>
+          ))}
+          <li>
+            <button
+              type="button"
+              onClick={goToResults}
+              className="mt-1 w-full px-2 py-2 text-left text-sm text-accent hover:text-rose-deep"
+            >
+              See all results for “{query.trim()}”
+            </button>
+          </li>
+        </ul>
+      )}
+
+      {query.trim() && suggestions.length === 0 && (
+        <p className="mt-4 px-2 text-sm text-muted">No fragrances match “{query.trim()}”.</p>
+      )}
     </div>
   );
 }

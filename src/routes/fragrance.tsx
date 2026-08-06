@@ -1,11 +1,18 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import ProductTile from "~/components/home/ProductTile";
 import { CATALOG, type CatalogEntry } from "~/mocks/catalog";
 import { useEscapeKey } from "~/sdk/useEscapeKey";
 
+interface FragranceSearch {
+  q?: string;
+}
+
 export const Route = createFileRoute("/fragrance")({
   component: FragrancePage,
+  validateSearch: (search: Record<string, unknown>): FragranceSearch => ({
+    q: typeof search.q === "string" ? search.q : undefined,
+  }),
 });
 
 const LABEL_CLASS = "font-display text-2xs font-medium tracking-(--tracking-label) uppercase";
@@ -100,12 +107,32 @@ function toggleInSet<T>(set: Set<T>, value: T): Set<T> {
   return next;
 }
 
+const PAGE_SIZE = 24;
+
+/** Page numbers to render: all of them under 8 pages, otherwise a window
+ * around the current page plus the first/last page, with gaps as `null`. */
+function pageWindow(current: number, total: number): (number | null)[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const pages = new Set([1, total, current - 1, current, current + 1]);
+  const sorted = [...pages].filter((p) => p >= 1 && p <= total).sort((a, b) => a - b);
+  const withGaps: (number | null)[] = [];
+  sorted.forEach((p, i) => {
+    if (i > 0 && p - sorted[i - 1] > 1) withGaps.push(null);
+    withGaps.push(p);
+  });
+  return withGaps;
+}
+
 function FragrancePage() {
+  const { q } = Route.useSearch();
+  const [query, setQuery] = useState(q ?? "");
   const [families, setFamilies] = useState<Set<string>>(new Set());
   const [brands, setBrands] = useState<Set<string>>(new Set());
   const [priceBucket, setPriceBucket] = useState<PriceBucketKey | null>(null);
   const [sort, setSort] = useState<SortKey>("recommended");
   const [filterOpen, setFilterOpen] = useState(false);
+  const [page, setPage] = useState(1);
+  const gridRef = useRef<HTMLDivElement>(null);
 
   useEscapeKey(() => setFilterOpen(false));
 
@@ -121,23 +148,51 @@ function FragrancePage() {
     return [...counts.entries()].sort((a, b) => a[0].localeCompare(b[0]));
   }, []);
 
+  // The searchbar can send a fresh `q` while this page is already open
+  // (same route, only the search param changes — no remount), so pick it
+  // up whenever it changes rather than just on first render.
+  useEffect(() => {
+    setQuery(q ?? "");
+  }, [q]);
+
   const filtered = useMemo(() => {
     const bucket = PRICE_BUCKETS.find((b) => b.key === priceBucket);
+    const needle = query.trim().toLowerCase();
     const entries = CATALOG.filter((c) => {
       if (families.size > 0 && !families.has(c.family)) return false;
       if (brands.size > 0 && !brands.has(c.brand)) return false;
       if (bucket && !bucket.test(c.price)) return false;
+      if (needle) {
+        const haystack = `${c.name} ${c.brand} ${c.family} ${c.notes}`.toLowerCase();
+        if (!haystack.includes(needle)) return false;
+      }
       return true;
     });
     return sortEntries(entries, sort);
-  }, [families, brands, priceBucket, sort]);
+  }, [families, brands, priceBucket, sort, query]);
 
-  const activeCount = families.size + brands.size + (priceBucket ? 1 : 0);
+  // Filters/sort changed the result set — go back to page 1 rather than
+  // stranding the visitor on a now out-of-range or mid-list page.
+  useEffect(() => {
+    setPage(1);
+  }, [families, brands, priceBucket, sort, query]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const paginated = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  const goToPage = (next: number) => {
+    setPage(Math.min(Math.max(next, 1), totalPages));
+    gridRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const activeCount = families.size + brands.size + (priceBucket ? 1 : 0) + (query.trim() ? 1 : 0);
 
   const clearAll = () => {
     setFamilies(new Set());
     setBrands(new Set());
     setPriceBucket(null);
+    setQuery("");
   };
 
   return (
@@ -146,7 +201,9 @@ function FragrancePage() {
         <div className={`${LABEL_CLASS} mb-3 text-accent`}>Full collection</div>
         <h1 className="font-display text-4xl font-light text-ink sm:text-5xl">Fragrance</h1>
         <p className="mt-3 max-w-xl text-sm text-muted sm:text-base">
-          {CATALOG.length} fragrances, from everyday signatures to statement scents.
+          {query.trim()
+            ? `${filtered.length} results for “${query.trim()}”`
+            : `${CATALOG.length} fragrances, from everyday signatures to statement scents.`}
         </p>
       </div>
 
@@ -183,6 +240,15 @@ function FragrancePage() {
 
       {activeCount > 0 && (
         <div className="mb-6 flex flex-wrap items-center gap-2">
+          {query.trim() && (
+            <button
+              type="button"
+              onClick={() => setQuery("")}
+              className={`${LABEL_CLASS} tap-scale flex items-center gap-1.5 rounded-full bg-blush-deep px-3 py-1.5 text-ink`}
+            >
+              “{query.trim()}” ✕
+            </button>
+          )}
           {[...families].map((f) => (
             <button
               key={f}
@@ -223,11 +289,66 @@ function FragrancePage() {
       )}
 
       {filtered.length > 0 ? (
-        <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4">
-          {filtered.map((entry) => (
-            <ProductTile key={entry.slug} entry={entry} />
-          ))}
-        </div>
+        <>
+          <div ref={gridRef} className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4">
+            {paginated.map((entry) => (
+              <ProductTile key={entry.slug} entry={entry} />
+            ))}
+          </div>
+
+          {totalPages > 1 && (
+            <nav
+              aria-label="Pagination"
+              className="mt-10 flex flex-col items-center gap-3 sm:mt-14"
+            >
+              <p className="text-xs text-muted">
+                Showing {(currentPage - 1) * PAGE_SIZE + 1}–
+                {Math.min(currentPage * PAGE_SIZE, filtered.length)} of {filtered.length}
+              </p>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => goToPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  aria-label="Previous page"
+                  className="tap-scale flex size-9 items-center justify-center rounded-sm border border-line-strong text-ink transition-colors duration-(--duration-fast) hover:border-ink hover:bg-glass-strong disabled:pointer-events-none disabled:opacity-30"
+                >
+                  ‹
+                </button>
+                {pageWindow(currentPage, totalPages).map((p, i) =>
+                  p === null ? (
+                    <span key={`gap-${i}`} className="px-1.5 text-sm text-muted">
+                      …
+                    </span>
+                  ) : (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => goToPage(p)}
+                      aria-current={p === currentPage ? "page" : undefined}
+                      className={`tap-scale flex size-9 items-center justify-center rounded-sm text-sm transition-colors duration-(--duration-fast) ${
+                        p === currentPage
+                          ? "bg-rose text-black"
+                          : "text-ink-soft hover:bg-glass-strong"
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ),
+                )}
+                <button
+                  type="button"
+                  onClick={() => goToPage(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  aria-label="Next page"
+                  className="tap-scale flex size-9 items-center justify-center rounded-sm border border-line-strong text-ink transition-colors duration-(--duration-fast) hover:border-ink hover:bg-glass-strong disabled:pointer-events-none disabled:opacity-30"
+                >
+                  ›
+                </button>
+              </div>
+            </nav>
+          )}
+        </>
       ) : (
         <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-line-strong py-20 text-center">
           <p className="text-sm text-muted">No fragrances match your filters.</p>
