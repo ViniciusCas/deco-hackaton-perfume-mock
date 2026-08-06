@@ -12,7 +12,7 @@ import appCss from "../styles/app.css?url";
 const SITE_NAME = "Sillage";
 
 const NAV_ITEMS = [
-  { "@type": "SiteNavigationElement" as const, name: "Fragrance", url: "/" },
+  { "@type": "SiteNavigationElement" as const, name: "Fragrance", url: "/fragrance" },
   { "@type": "SiteNavigationElement" as const, name: "Discovery", url: "/discovery" },
 ];
 

@@ -76,7 +76,7 @@ function HomePage() {
             New arrivals
           </h2>
           <Link
-            to="/discovery"
+            to="/fragrance"
             className="font-display text-2xs font-medium tracking-(--tracking-label) text-accent uppercase hover:text-rose-deep"
           >
             See all
