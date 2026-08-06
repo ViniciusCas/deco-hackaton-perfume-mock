@@ -1,13 +1,14 @@
 /**
- * Search bar — filters the local catalog client-side (this site has no
- * search backend/loader; see ~/mocks/catalog). Typing shows a live
- * dropdown of the top matches by name/brand/family/notes; Enter (or the
- * search button) sends the full query to /fragrance, which applies the
- * same match as an additional filter alongside family/brand/price.
+ * Search bar — filters the catalog (prefetched into the query cache by
+ * __root.tsx, see ~/platform/catalog) client-side; no per-keystroke network
+ * call. Typing shows a live dropdown of the top matches by name/brand/
+ * family/notes; Enter (or the search button) sends the full query to
+ * /fragrance, which applies the same match as an additional filter
+ * alongside family/brand/price.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { CATALOG, type CatalogEntry } from "~/mocks/catalog";
+import { type CatalogEntry, useCatalog } from "~/platform/catalog";
 import { SEARCHBAR_INPUT_FORM_ID, SEARCH_OVERLAY_ID } from "../../../constants";
 import Icon from "../../ui/Icon";
 
@@ -36,6 +37,7 @@ export default function Searchbar({ placeholder = "What are you looking for?" }:
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
+  const { catalog } = useCatalog();
 
   // The overlay this searchbar lives in is a CSS-only show/hide (a checkbox
   // toggle) — this component mounts once, while it's still closed, so a
@@ -75,8 +77,8 @@ export default function Searchbar({ placeholder = "What are you looking for?" }:
   const suggestions = useMemo(() => {
     const needle = query.trim().toLowerCase();
     if (!needle) return [];
-    return CATALOG.filter((entry) => matches(entry, needle)).slice(0, MAX_SUGGESTIONS);
-  }, [query]);
+    return catalog.filter((entry) => matches(entry, needle)).slice(0, MAX_SUGGESTIONS);
+  }, [catalog, query]);
 
   const goToResults = () => {
     const term = query.trim();

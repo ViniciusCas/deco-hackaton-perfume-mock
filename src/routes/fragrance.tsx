@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import ProductTile from "~/components/home/ProductTile";
-import { CATALOG, type CatalogEntry } from "~/mocks/catalog";
+import { type CatalogEntry, useCatalog } from "~/platform/catalog";
 import { useEscapeKey } from "~/sdk/useEscapeKey";
 
 interface FragranceSearch {
@@ -125,6 +125,7 @@ function pageWindow(current: number, total: number): (number | null)[] {
 
 function FragrancePage() {
   const { q } = Route.useSearch();
+  const { catalog } = useCatalog();
   const [query, setQuery] = useState(q ?? "");
   const [families, setFamilies] = useState<Set<string>>(new Set());
   const [brands, setBrands] = useState<Set<string>>(new Set());
@@ -138,15 +139,15 @@ function FragrancePage() {
 
   const familyOptions = useMemo(() => {
     const counts = new Map<string, number>();
-    for (const c of CATALOG) counts.set(c.family, (counts.get(c.family) ?? 0) + 1);
+    for (const c of catalog) counts.set(c.family, (counts.get(c.family) ?? 0) + 1);
     return [...counts.entries()].sort((a, b) => b[1] - a[1]);
-  }, []);
+  }, [catalog]);
 
   const brandOptions = useMemo(() => {
     const counts = new Map<string, number>();
-    for (const c of CATALOG) counts.set(c.brand, (counts.get(c.brand) ?? 0) + 1);
+    for (const c of catalog) counts.set(c.brand, (counts.get(c.brand) ?? 0) + 1);
     return [...counts.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-  }, []);
+  }, [catalog]);
 
   // The searchbar can send a fresh `q` while this page is already open
   // (same route, only the search param changes — no remount), so pick it
@@ -158,7 +159,7 @@ function FragrancePage() {
   const filtered = useMemo(() => {
     const bucket = PRICE_BUCKETS.find((b) => b.key === priceBucket);
     const needle = query.trim().toLowerCase();
-    const entries = CATALOG.filter((c) => {
+    const entries = catalog.filter((c) => {
       if (families.size > 0 && !families.has(c.family)) return false;
       if (brands.size > 0 && !brands.has(c.brand)) return false;
       if (bucket && !bucket.test(c.price)) return false;
@@ -169,7 +170,7 @@ function FragrancePage() {
       return true;
     });
     return sortEntries(entries, sort);
-  }, [families, brands, priceBucket, sort, query]);
+  }, [catalog, families, brands, priceBucket, sort, query]);
 
   // Filters/sort changed the result set — go back to page 1 rather than
   // stranding the visitor on a now out-of-range or mid-list page.
@@ -203,7 +204,7 @@ function FragrancePage() {
         <p className="mt-3 max-w-xl text-sm text-muted sm:text-base">
           {query.trim()
             ? `${filtered.length} results for “${query.trim()}”`
-            : `${CATALOG.length} fragrances, from everyday signatures to statement scents.`}
+            : `${catalog.length} fragrances, from everyday signatures to statement scents.`}
         </p>
       </div>
 

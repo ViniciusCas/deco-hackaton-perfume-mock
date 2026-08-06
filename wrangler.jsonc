@@ -82,5 +82,11 @@
 		"DECO_OTEL_ERROR_PROMOTION_RATE": "0.1",
 		"DECO_OTEL_LOGS_MIN_LEVEL": "debug"
 		// DECO_OTEL_AUTH_TOKEN goes as a secret: wrangler secret put DECO_OTEL_AUTH_TOKEN
-	}
+	},
+	"hyperdrive": [
+		{
+			"binding": "HYPERDRIVE",
+			"id": "5ffc8bf2c071488eab04135667fce6f3"
+		}
+	]
 }

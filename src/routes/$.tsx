@@ -3,18 +3,25 @@ import { createFileRoute } from "@tanstack/react-router";
 import Button from "~/components/ui/Button";
 import ProductTile from "~/components/home/ProductTile";
 import ProductHeroImage from "~/components/home/ProductHeroImage";
-import { findBySlug, CATALOG } from "~/mocks/catalog";
+import { type CatalogEntry, getCatalogServerFn, getProductBySlugServerFn } from "~/platform/catalog";
 
 export const Route = createFileRoute("/$")({
   component: CatchAllPage,
+  loader: async ({ params }) => {
+    const slug = (params._splat ?? "").split("/").filter(Boolean).pop() ?? "";
+    const [entry, catalog] = await Promise.all([
+      getProductBySlugServerFn({ data: slug }),
+      getCatalogServerFn(),
+    ]);
+    return { slug, entry, catalog };
+  },
 });
 
 const SIZES = ["30 ml", "50 ml", "100 ml"];
 
-function ProductPage({ slug }: { slug: string }) {
-  const entry = findBySlug(slug)!;  
+function ProductPage({ slug, entry, catalog }: { slug: string; entry: CatalogEntry; catalog: CatalogEntry[] }) {
   const [size, setSize] = useState(SIZES[1]);
-  const related = CATALOG.filter((c) => c.slug !== slug).slice(0, 4);
+  const related = catalog.filter((c) => c.slug !== slug).slice(0, 4);
 
   return (
     <div className="pt-[90px] sm:pt-[110px]">
@@ -95,8 +102,6 @@ function NotFoundPage() {
 }
 
 function CatchAllPage() {
-  const { _splat } = Route.useParams();
-  const slug = (_splat ?? "").split("/").filter(Boolean).pop() ?? "";
-  const entry = findBySlug(slug);
-  return entry ? <ProductPage slug={slug} /> : <NotFoundPage />;
+  const { slug, entry, catalog } = Route.useLoaderData();
+  return entry ? <ProductPage slug={slug} entry={entry} catalog={catalog} /> : <NotFoundPage />;
 }

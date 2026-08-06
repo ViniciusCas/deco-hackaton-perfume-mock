@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { CatalogEntry } from "~/mocks/catalog";
+import type { CatalogEntry } from "~/platform/catalog";
 
 /**
  * PDP hero image — same real-image-with-letter-fallback treatment as

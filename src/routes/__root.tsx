@@ -3,6 +3,7 @@ import type { QueryClient } from "@tanstack/react-query";
 import { DecoRootLayout } from "@decocms/tanstack";
 import { CART_QUERY_KEY, getCartServerFn } from "../platform/cart";
 import { getUserServerFn, USER_QUERY_KEY } from "../platform/user";
+import { CATALOG_QUERY_KEY, getCatalogServerFn } from "../platform/catalog";
 import MinicartDrawer from "../components/minicart/MinicartDrawer";
 import Header from "../sections/Header/Header";
 import Footer from "../sections/Footer/Footer";
@@ -50,6 +51,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       tasks.push(
         getUserServerFn()
           .then((user) => context.queryClient.setQueryData(USER_QUERY_KEY, user))
+          .catch(() => {}),
+      );
+    }
+    if (!context.queryClient.getQueryData(CATALOG_QUERY_KEY)) {
+      tasks.push(
+        getCatalogServerFn()
+          .then((catalog) => context.queryClient.setQueryData(CATALOG_QUERY_KEY, catalog))
           .catch(() => {}),
       );
     }

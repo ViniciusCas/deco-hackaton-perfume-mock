@@ -2,10 +2,11 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import Icon, { type AvailableIcons } from "~/components/ui/Icon";
 import Button from "~/components/ui/Button";
 import ProductTile from "~/components/home/ProductTile";
-import { ARRIVALS, BEST_SELLERS } from "~/mocks/catalog";
+import { getHomeCollectionsServerFn } from "~/platform/catalog";
 
 export const Route = createFileRoute("/")({
   component: HomePage,
+  loader: () => getHomeCollectionsServerFn(),
 });
 
 const NOTE_CHIPS = ["Floral", "Amber", "Woody", "Citrus", "Musk"];
@@ -17,6 +18,8 @@ const PERKS: { icon: AvailableIcons; label: string }[] = [
 ];
 
 function HomePage() {
+  const { arrivals: ARRIVALS, bestSellers: BEST_SELLERS } = Route.useLoaderData();
+
   return (
     <div className="pt-[90px] sm:pt-[110px]">
       {/* Hero — the newest arrival's real product photo, with a gradient

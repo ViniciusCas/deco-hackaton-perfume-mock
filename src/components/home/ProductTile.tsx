@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import type { CatalogEntry } from "~/mocks/catalog";
+import type { CatalogEntry } from "~/platform/catalog";
 import Tag from "~/components/ui/Tag";
 
 /**

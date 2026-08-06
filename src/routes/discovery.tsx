@@ -1,10 +1,11 @@
 import { useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import Button from "~/components/ui/Button";
-import { CATALOG } from "~/mocks/catalog";
+import { type CatalogEntry, getCatalogServerFn } from "~/platform/catalog";
 
 export const Route = createFileRoute("/discovery")({
   component: DiscoveryPage,
+  loader: () => getCatalogServerFn(),
 });
 
 const GREETING =
@@ -28,13 +29,13 @@ interface ChatMessage {
  * matches words in the visitor's message against each fragrance's mood/
  * family/notes text and recommends the top 3 by overlap.
  */
-function scoreReply(input: string): { text: string; slugs: string[] } {
+function scoreReply(catalog: CatalogEntry[], input: string): { text: string; slugs: string[] } {
   const words = input
     .toLowerCase()
     .split(/[^a-zà-ÿ]+/)
     .filter((w) => w.length > 3);
 
-  const scored = CATALOG.map((entry) => {
+  const scored = catalog.map((entry) => {
     const haystack = `${entry.mood} ${entry.family} ${entry.notes}`.toLowerCase();
     const score = words.reduce((n, w) => (haystack.includes(w) ? n + 1 : n), 0);
     return { entry, score };
@@ -42,7 +43,7 @@ function scoreReply(input: string): { text: string; slugs: string[] } {
 
   const anyMatch = scored[0]?.score > 0;
   const top = (
-    anyMatch ? scored.slice(0, 3) : CATALOG.slice(0, 3).map((entry) => ({ entry, score: 0 }))
+    anyMatch ? scored.slice(0, 3) : catalog.slice(0, 3).map((entry) => ({ entry, score: 0 }))
   ).map((s) => s.entry);
 
   const text = anyMatch
@@ -77,8 +78,9 @@ function VialThumb({ name, size = 40 }: { name: string; size?: number }) {
 const LABEL_CLASS = "font-display text-2xs font-medium tracking-(--tracking-label) uppercase";
 
 function DiscoveryPage() {
+  const catalog = Route.useLoaderData();
   const [messages, setMessages] = useState<ChatMessage[]>([{ role: "assistant", text: GREETING }]);
-  const [recommended, setRecommended] = useState<string[]>(CATALOG.slice(0, 3).map((c) => c.slug));
+  const [recommended, setRecommended] = useState<string[]>(catalog.slice(0, 3).map((c) => c.slug));
   const [picks, setPicks] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [input, setInput] = useState("");
@@ -95,7 +97,7 @@ function DiscoveryPage() {
     // Scripted local reply — deliberately delayed so it reads like a
     // response rather than a client-side keyword match; no network involved.
     window.setTimeout(() => {
-      const reply = scoreReply(clean);
+      const reply = scoreReply(catalog, clean);
       setMessages((prev) => [...prev, { role: "assistant", text: reply.text }]);
       setRecommended(reply.slugs);
       setBusy(false);
@@ -105,7 +107,7 @@ function DiscoveryPage() {
     }, 500);
   };
 
-  const byslug = Object.fromEntries(CATALOG.map((c) => [c.slug, c]));
+  const byslug = Object.fromEntries(catalog.map((c) => [c.slug, c]));
   const slots = [0, 1, 2].map((i) => byslug[picks[i]] ?? null);
 
   const addPick = (slug: string) => {
