@@ -1,37 +1,23 @@
 import { Link } from "@tanstack/react-router";
 import { useUser } from "../../platform/user";
-import Button from "../ui/Button";
 import Icon from "../ui/Icon";
 
-interface Props {
-  variant: "mobile" | "desktop";
-}
-
-const MOBILE_ICON_CLASS =
-  "tap-scale flex size-10 items-center justify-center rounded-sm text-ink transition-colors duration-(--duration-fast) hover:bg-white/60";
+const ICON_CLASS =
+  "tap-scale flex size-11 items-center justify-center rounded-sm text-ink transition-colors duration-(--duration-fast) hover:bg-white/60";
 
 /**
- * Desktop renders the Figma "Action button" — plain text pill: "Account" or
- * "Login". Mobile has no room for a text pill next to the logo and cart, so
- * it renders an icon-only button matching the menu/search icons instead.
+ * Icon-only account action — matches the design's header, which renders
+ * search/account/bag as identical 44px icon buttons (no text pill).
  */
-function SignIn({ variant }: Props) {
+function SignIn() {
   const { isAuthenticated } = useUser();
   const href = isAuthenticated ? "/account" : "/login";
-  const label = isAuthenticated ? "Account" : "Login";
-
-  if (variant === "mobile") {
-    return (
-      <Link to={href} aria-label={label} preload="intent" className={MOBILE_ICON_CLASS}>
-        <Icon id="account_circle" size={18} />
-      </Link>
-    );
-  }
+  const label = isAuthenticated ? "Account" : "Sign in";
 
   return (
-    <Button href={href} size="md">
-      {label}
-    </Button>
+    <Link to={href} aria-label={label} preload="intent" className={ICON_CLASS}>
+      <Icon id="account_circle" size={19} />
+    </Link>
   );
 }
 

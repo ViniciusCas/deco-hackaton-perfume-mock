@@ -102,7 +102,7 @@ function Aside({
       style={{ maxWidth: "100vw" }}
     >
       <div className="flex items-center justify-between px-5 py-3.5">
-        <span className="text-lg font-medium text-ink">{title}</span>
+        <span className="font-display text-lg font-normal text-ink">{title}</span>
         <label
           htmlFor={drawer}
           aria-label="Close"

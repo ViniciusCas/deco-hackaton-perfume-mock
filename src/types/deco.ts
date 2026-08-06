@@ -29,7 +29,7 @@ export function isDeferred(value: unknown): boolean {
 export const context = {
   isDeploy: false,
   platform: "tanstack-start" as const,
-  site: "demo-storefront",
+  site: "sillage",
   siteId: 0,
 };
 

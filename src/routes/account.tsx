@@ -1,6 +1,7 @@
-import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useSignOut, useUser } from "../platform/user";
 import AddressBook from "../components/account/AddressBook";
+import Button from "../components/ui/Button";
 
 export const Route = createFileRoute("/account")({
   component: AccountPage,
@@ -13,7 +14,7 @@ function AccountPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center">
+      <div className="flex min-h-[60vh] items-center justify-center pt-[90px] sm:pt-[110px]">
         <span className="loading loading-spinner loading-lg" />
       </div>
     );
@@ -21,38 +22,52 @@ function AccountPage() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center px-4">
-        <div className="card bg-base-100 shadow w-full max-w-md p-8 text-center">
-          <h1 className="text-2xl font-semibold mb-2">You're not signed in</h1>
-          <p className="text-base-content/70 mb-6">Sign in to view your account details.</p>
-          <Link to="/login" preload="intent" className="btn btn-primary">
+      <div className="flex min-h-[60vh] items-center justify-center px-4 pt-[90px] sm:pt-[110px]">
+        <div className="frost w-full max-w-md rounded-lg p-8 text-center">
+          <h1 className="mb-2 font-display text-2xl font-normal text-ink">You're not signed in</h1>
+          <p className="mb-6 text-sm text-muted">Sign in to view your account details.</p>
+          <Button href="/login" variant="solid" size="md">
             Go to sign in
-          </Link>
+          </Button>
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="container mx-auto px-4 py-10">
-      <h1 className="text-3xl font-semibold mb-2">My account</h1>
-      <p className="text-base-content/70 mb-8">
-        Welcome back{user?.givenName ? `, ${user.givenName}` : ""}.
-      </p>
+  const initials =
+    [user?.givenName?.[0], user?.familyName?.[0]].filter(Boolean).join("").toUpperCase() || "?";
 
-      <div className="card bg-base-100 shadow p-6 max-w-xl">
-        <h2 className="text-lg font-medium mb-4">Profile</h2>
+  return (
+    <div className="mx-auto max-w-4xl px-4 pt-[90px] pb-14 sm:px-8 sm:pt-[110px]">
+      <div className="mb-10 flex items-center gap-4">
+        <div className="flex size-13 shrink-0 items-center justify-center rounded-full bg-accent font-display text-lg text-white">
+          {initials}
+        </div>
+        <div>
+          <h1 className="font-display text-3xl font-light text-ink">
+            {user?.givenName ? `Welcome back, ${user.givenName}` : "My account"}
+          </h1>
+          <p className="text-sm text-muted">{user?.email ?? ""}</p>
+        </div>
+      </div>
+
+      <div className="frost max-w-xl rounded-lg p-6">
+        <h2 className="mb-4 font-display text-2xs font-medium tracking-(--tracking-label) text-ink uppercase">
+          Profile
+        </h2>
         <dl className="grid grid-cols-[120px_1fr] gap-y-2 text-sm">
-          <dt className="text-base-content/60">Name</dt>
-          <dd>{[user?.givenName, user?.familyName].filter(Boolean).join(" ") || "—"}</dd>
-          <dt className="text-base-content/60">Email</dt>
-          <dd>{user?.email ?? "—"}</dd>
+          <dt className="text-muted">Name</dt>
+          <dd className="text-ink">
+            {[user?.givenName, user?.familyName].filter(Boolean).join(" ") || "—"}
+          </dd>
+          <dt className="text-muted">Email</dt>
+          <dd className="text-ink">{user?.email ?? "—"}</dd>
         </dl>
 
-        <div className="mt-6 flex gap-3">
-          <button
-            type="button"
-            className="btn btn-outline"
+        <div className="mt-6">
+          <Button
+            variant="outline"
+            size="md"
             disabled={signOut.isPending}
             onClick={() =>
               signOut.mutate(undefined, {
@@ -61,11 +76,11 @@ function AccountPage() {
             }
           >
             {signOut.isPending ? (
-              <span className="loading loading-spinner loading-sm" />
+              <span className="loading loading-spinner loading-xs" />
             ) : (
               "Sign out"
             )}
-          </button>
+          </Button>
         </div>
       </div>
 

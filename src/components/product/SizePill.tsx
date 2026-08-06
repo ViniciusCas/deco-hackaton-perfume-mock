@@ -30,7 +30,7 @@ export function SizePillList({
               aria-current={checked ? "page" : undefined}
               className={clx(
                 "tap-scale flex size-[26px] items-center justify-center rounded-full text-2xs capitalize transition-colors duration-(--duration-fast)",
-                checked ? "bg-ink text-white" : "frost text-muted-soft hover:bg-glass-strong",
+                checked ? "bg-rose-deep text-white" : "frost text-muted-soft hover:bg-glass-strong",
               )}
             >
               {value}

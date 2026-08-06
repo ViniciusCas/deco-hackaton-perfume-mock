@@ -14,8 +14,8 @@ export default function Tag({ children, className, tone = "dark" }: Props) {
   return (
     <span
       className={clx(
-        "inline-flex items-center rounded-xs px-2 py-1.5 text-2xs font-normal capitalize backdrop-blur-[16px]",
-        tone === "dark" ? "bg-glass-tag text-white" : "frost text-ink",
+        "inline-flex items-center rounded-xs px-2 py-1.5 font-display text-2xs font-medium tracking-(--tracking-label) uppercase backdrop-blur-[16px]",
+        tone === "dark" ? "bg-glass-tag text-ink" : "frost text-ink",
         className,
       )}
     >

@@ -80,7 +80,9 @@ function CategoryTile({
         loading="lazy"
       />
       <div className="absolute inset-0 bg-gradient-to-b from-black/0 from-55% to-black/30" />
-      <span className="relative text-display font-medium text-white">{label}</span>
+      <span className="relative font-display text-display font-normal tracking-(--tracking-display) text-white">
+        {label}
+      </span>
     </Link>
   );
 }
@@ -130,14 +132,18 @@ function HeroSlideNav({ product, index }: { product: Product; index: number }) {
       </div>
       <div className="grid grid-cols-[0fr] transition-[grid-template-columns] duration-(--duration-slow) ease-(--ease-out-soft) group-disabled:grid-cols-[1fr]">
         <div className="flex min-w-0 flex-col gap-1 overflow-hidden opacity-0 transition-opacity duration-(--duration-base) ease-(--ease-out-soft) group-disabled:opacity-100 group-disabled:delay-75 sm:gap-1.5">
-          <span className="hidden text-2xs font-medium text-ink-soft whitespace-nowrap sm:inline">
+          <span className="hidden font-display text-2xs font-medium tracking-(--tracking-label) text-ink-soft whitespace-nowrap uppercase sm:inline">
             Produto em destaque
           </span>
           <hr className="hidden w-28 border-t border-ink-soft/20 sm:block" />
           <span className="line-clamp-1 max-w-28 text-xs font-medium text-ink whitespace-nowrap sm:max-w-40 sm:text-sm">
             {title}
           </span>
-          <ProductCardPrice price={price} listPrice={listPrice} currencyCode={offers?.priceCurrency} />
+          <ProductCardPrice
+            price={price}
+            listPrice={listPrice}
+            currencyCode={offers?.priceCurrency}
+          />
         </div>
       </div>
     </Slider.Dot>
@@ -145,7 +151,15 @@ function HeroSlideNav({ product, index }: { product: Product; index: number }) {
 }
 
 /** Full-bleed slide: responsive image (desktop/mobile crop) and optional brand logo (desktop). */
-function HeroSlide({ image, mobileImage, href = "/", headline, logo, logoAlt, isLcp = false }: HeroSlide & { isLcp?: boolean }) {
+function HeroSlide({
+  image,
+  mobileImage,
+  href = "/",
+  headline,
+  logo,
+  logoAlt,
+  isLcp = false,
+}: HeroSlide & { isLcp?: boolean }) {
   return (
     <div className="relative size-full shrink-0 overflow-hidden rounded-md">
       <Link to={href} preload="intent" className="absolute inset-0 block">
@@ -179,7 +193,13 @@ function HeroSlide({ image, mobileImage, href = "/", headline, logo, logoAlt, is
 
       {logo && (
         <div className="pointer-events-none absolute top-8 left-8 hidden sm:block">
-          <Image src={logo} alt={logoAlt ?? ""} width={160} height={64} className="h-10 w-auto object-contain" />
+          <Image
+            src={logo}
+            alt={logoAlt ?? ""}
+            width={160}
+            height={64}
+            className="h-10 w-auto object-contain"
+          />
         </div>
       )}
     </div>
@@ -200,7 +220,11 @@ export default function Hero({ slides, categories = [], infoBullets = [], interv
           <div id={id} className="relative min-h-0 flex-1">
             <Slider className="carousel carousel-center h-full w-full">
               {slides.map((slide, index) => (
-                <Slider.Item key={slide.image} index={index} className="carousel-item h-full w-full">
+                <Slider.Item
+                  key={slide.image}
+                  index={index}
+                  className="carousel-item h-full w-full"
+                >
                   <HeroSlide {...slide} isLcp={index === 0} />
                 </Slider.Item>
               ))}
@@ -229,7 +253,11 @@ export default function Hero({ slides, categories = [], infoBullets = [], interv
                     ? slides.map(
                         (slide, index) =>
                           slide.product?.[0] && (
-                            <HeroSlideNav key={slide.image} product={slide.product[0]} index={index} />
+                            <HeroSlideNav
+                              key={slide.image}
+                              product={slide.product[0]}
+                              index={index}
+                            />
                           ),
                       )
                     : slides.map((slide, index) => (

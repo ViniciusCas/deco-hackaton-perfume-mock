@@ -16,7 +16,7 @@ Both workflows need the following GitHub secrets (Settings → Secrets and varia
 | `CLOUDFLARE_API_TOKEN`  | API token with `Workers Scripts:Edit` permission           |
 | `CLOUDFLARE_ACCOUNT_ID` | Cloudflare account ID that owns the worker                 |
 
-The worker name is set in `wrangler.jsonc` (currently `demo-storefront`). Rename it in your fork to avoid colliding with other workers on the same Cloudflare account.
+The worker name is set in `wrangler.jsonc` (currently `sillage`).
 
 ## Preview (Cloudflare Workers Builds)
 

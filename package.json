@@ -1,14 +1,14 @@
 {
-  "name": "demo-storefront",
+  "name": "sillage",
   "version": "0.1.0",
   "type": "module",
-  "description": "demo-storefront storefront powered by TanStack Start",
+  "description": "Sillage storefront powered by TanStack Start",
   "scripts": {
     "dev": "vite dev",
     "dev:clean": "rm -rf node_modules/.vite .wrangler/state .tanstack && vite dev",
     "generate:blocks": "bun node_modules/@decocms/blocks-cli/scripts/generate-blocks.ts",
     "generate:routes": "tsr generate",
-    "generate:schema": "bun node_modules/@decocms/blocks-cli/scripts/generate-schema.ts --site demo-storefront",
+    "generate:schema": "bun node_modules/@decocms/blocks-cli/scripts/generate-schema.ts --site sillage",
     "generate:invoke": "bun node_modules/@decocms/blocks-cli/scripts/generate-invoke.ts",
     "generate:sections": "bun node_modules/@decocms/blocks-cli/scripts/generate-sections.ts",
     "generate:loaders": "bun node_modules/@decocms/blocks-cli/scripts/generate-loaders.ts --exclude shopify/loaders,shopify/actions",

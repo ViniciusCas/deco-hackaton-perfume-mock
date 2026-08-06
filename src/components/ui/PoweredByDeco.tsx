@@ -4,7 +4,7 @@
 export default function PoweredByDeco() {
   return (
     <a
-      href="https://deco.cx?utm_source=demo-storefront"
+      href="https://deco.cx?utm_source=sillage"
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Powered by deco.cx"

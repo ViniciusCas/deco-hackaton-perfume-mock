@@ -1,7 +1,9 @@
 import { formatPrice } from "@decocms/apps-commerce/sdk/formatPrice";
+import { Link } from "@tanstack/react-router";
 import { clx } from "~/sdk/clx";
 import Image from "~/components/ui/Image";
 import Icon from "../ui/Icon";
+import Button from "../ui/Button";
 import { MINICART_DRAWER_ID } from "../../constants";
 import {
   useCart,
@@ -20,24 +22,22 @@ function QuantityStepper({ item }: { item: CartItem }) {
   // consistent and the buttons remain interactive. Only the lower bound is
   // disabled.
   return (
-    <div className="join border border-base-200 rounded">
+    <div className="flex items-center overflow-hidden rounded-sm border border-line">
       <button
         type="button"
-        className="join-item btn btn-ghost btn-sm no-animation"
         aria-label="Decrease quantity"
         disabled={item.quantity <= 1}
         onClick={() => set(item.quantity - 1)}
+        className="tap-scale flex size-7 items-center justify-center text-sm text-ink disabled:opacity-30"
       >
-        -
+        −
       </button>
-      <span className="join-item px-3 self-center text-sm min-w-[2ch] text-center">
-        {item.quantity}
-      </span>
+      <span className="min-w-6 text-center text-xs tabular-nums">{item.quantity}</span>
       <button
         type="button"
-        className="join-item btn btn-ghost btn-sm no-animation"
         aria-label="Increase quantity"
         onClick={() => set(item.quantity + 1)}
+        className="tap-scale flex size-7 items-center justify-center text-sm text-ink"
       >
         +
       </button>
@@ -51,13 +51,13 @@ function CartLine({ item, currency }: { item: CartItem; currency: string }) {
   return (
     <li
       className={clx(
-        "flex gap-3 py-3 border-b border-base-200 last:border-none",
-        removing && "opacity-50 pointer-events-none",
+        "flex gap-3 border-b border-line py-4 last:border-none",
+        removing && "pointer-events-none opacity-50",
       )}
     >
       {item.image ? (
         <Image
-          className="rounded border border-base-200 w-16 h-16 object-cover"
+          className="size-16 rounded-sm border border-line object-cover"
           src={item.image.url}
           alt={item.image.alt ?? item.title}
           width={64}
@@ -65,26 +65,26 @@ function CartLine({ item, currency }: { item: CartItem; currency: string }) {
           loading="lazy"
         />
       ) : (
-        <div className="w-16 h-16 rounded bg-base-200" aria-hidden="true" />
+        <div className="size-16 rounded-sm bg-glass" aria-hidden="true" />
       )}
-      <div className="flex flex-col grow gap-1">
+      <div className="flex grow flex-col gap-1">
         <a
           href={`/${item.productHandle}`}
-          className="text-sm font-medium line-clamp-2 hover:underline"
+          className="line-clamp-2 text-sm font-medium text-ink hover:underline"
         >
           {item.title}
         </a>
-        <div className="text-sm text-base-400">{formatPrice(item.price.amount, currency)}</div>
-        <div className="flex items-center justify-between mt-1">
+        <div className="text-sm text-muted">{formatPrice(item.price.amount, currency)}</div>
+        <div className="mt-1 flex items-center justify-between">
           <QuantityStepper item={item} />
           <button
             type="button"
-            className="btn btn-ghost btn-xs no-animation"
             aria-label="Remove item"
             disabled={removing}
             onClick={() => remove.mutate({ lineId: item.lineId })}
+            className="tap-scale flex size-7 items-center justify-center text-muted hover:text-ink"
           >
-            <Icon id="trash" />
+            <Icon id="trash" size={16} />
           </button>
         </div>
       </div>
@@ -94,9 +94,12 @@ function CartLine({ item, currency }: { item: CartItem; currency: string }) {
 
 function EmptyState() {
   return (
-    <div className="flex flex-col gap-6 items-center justify-center grow">
-      <span className="font-medium text-2xl">Your bag is empty</span>
-      <label htmlFor={MINICART_DRAWER_ID} className="btn btn-outline no-animation cursor-pointer">
+    <div className="flex grow flex-col items-center justify-center gap-6">
+      <span className="font-display text-2xl font-light text-ink">Your bag is empty</span>
+      <label
+        htmlFor={MINICART_DRAWER_ID}
+        className="tap-scale cursor-pointer rounded-sm border border-line-strong px-5 py-2.5 font-display text-2xs font-medium tracking-(--tracking-label) text-ink uppercase"
+      >
         Choose products
       </label>
     </div>
@@ -105,25 +108,35 @@ function EmptyState() {
 
 function Footer({ cart }: { cart: CartState }) {
   return (
-    <footer className="w-full border-t border-base-200">
-      <div className="px-4 py-4 flex justify-between items-center">
-        <span className="text-sm">Subtotal</span>
-        <span className="font-medium">
+    <footer className="w-full border-t border-line">
+      <div className="flex items-center justify-between px-4 py-4">
+        <span className="text-sm text-muted">Subtotal</span>
+        <span className="font-medium tabular-nums text-ink">
           {formatPrice(cart.subtotal.amount, cart.subtotal.currencyCode)}
         </span>
       </div>
-      <div className="px-4 pb-2 text-xs text-base-400 text-right">
+      <div className="px-4 pb-3 text-right text-xs text-muted">
         Fees and shipping calculated at checkout
       </div>
-      <div className="p-4">
+      <div className="flex flex-col gap-2 p-4 pt-0">
+        <Link
+          to="/cart"
+          preload="intent"
+          className="tap-scale flex h-10 items-center justify-center rounded-sm border border-line-strong font-display text-2xs font-medium tracking-(--tracking-label) text-ink uppercase"
+        >
+          View full bag
+        </Link>
         {cart.checkoutUrl ? (
-          <a className="btn btn-primary w-full no-animation" href={cart.checkoutUrl}>
-            Begin Checkout
+          <a
+            href={cart.checkoutUrl}
+            className="tap-scale flex h-10 items-center justify-center rounded-sm bg-rose-deep font-display text-2xs font-medium tracking-(--tracking-label) text-white uppercase hover:bg-rose"
+          >
+            Begin checkout
           </a>
         ) : (
-          <button type="button" className="btn btn-primary w-full" disabled>
-            Begin Checkout
-          </button>
+          <Button type="button" variant="solid" size="md" disabled>
+            Begin checkout
+          </Button>
         )}
       </div>
     </footer>
@@ -137,18 +150,18 @@ export default function Minicart() {
   return (
     <div
       className={clx(
-        "flex flex-col h-full w-full",
+        "flex h-full w-full flex-col bg-surface",
         isFetching && "transition-opacity duration-150 opacity-80",
       )}
     >
-      <div className="flex items-center justify-between border-b border-base-200 px-4 py-3">
-        <h2 className="font-medium text-xl">Your bag</h2>
+      <div className="flex items-center justify-between border-b border-line px-4 py-3">
+        <h2 className="font-display text-xl font-normal text-ink">Your bag</h2>
         <label
           htmlFor={MINICART_DRAWER_ID}
           aria-label="Close cart"
-          className="btn btn-ghost btn-sm no-animation cursor-pointer"
+          className="tap-scale flex size-9 cursor-pointer items-center justify-center rounded-sm text-ink hover:bg-glass"
         >
-          <Icon id="close" />
+          <Icon id="close" size={18} />
         </label>
       </div>
 

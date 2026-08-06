@@ -1,12 +1,10 @@
-# demo-storefront
+# Sillage
 
-A [deco.cx](https://deco.cx) storefront built on **TanStack Start + React 19 + Cloudflare Workers**, with Shopify as the commerce backend.
+A perfume storefront demo built on **TanStack Start + React 19 + Cloudflare Workers**, with a mock Shopify-shaped commerce backend.
 
 This is a **site repo** — it consumes the [`@decocms/start`](https://www.npmjs.com/package/@decocms/start) framework (CMS bridge, admin protocol, worker entry, edge caching) and [`@decocms/apps`](https://www.npmjs.com/package/@decocms/apps) (commerce loaders/actions). UI, sections, and routes live here.
 
 ## Stack
-
-
 
 | Layer | Tech |
 |---|---|
@@ -17,87 +15,8 @@ This is a **site repo** — it consumes the [`@decocms/start`](https://www.npmjs
 | Build | Vite 7 |
 | Data | TanStack Query + TanStack Store, server functions |
 | Commerce | Shopify Storefront API (via `@decocms/apps/shopify`) |
-| CMS | Deco admin protocol (via `@decocms/start`) |
+| CMS | Deco admin protocol (via `@decocms/start`) — used for framework plumbing (admin/preview routes, site config); the public storefront itself renders from local mock data, see [How rendering works](#how-rendering-works) |
 | Deploy | Wrangler (Cloudflare Workers) |
-
-## Migrating a Deco Fresh storefront to this stack
-
-If you have an existing Deco storefront on the legacy **Fresh + Preact + Deno** stack, the [`@decocms/start`](https://github.com/decocms/deco-start) framework ships a migration CLI that takes you from a Fresh site to a working TanStack Start + Cloudflare Workers site in one pass — this repo is one of the outputs (see `MIGRATION_REPORT.md`).
-
-The script does six phases automatically:
-
-1. **Analyze** — scan source, detect Preact/Fresh/Deco patterns, GTM, commerce platform
-2. **Scaffold** — generate `package.json`, `tsconfig.json`, `vite.config.ts`, `wrangler.jsonc`, `src/server.ts`, `src/worker-entry.ts`, `src/router.tsx`, `src/setup.ts`, `src/cache-config.ts`, `src/routes/{__root,$,index,deco/*}`, `src/styles/app.css`, image components, `useCart` / `useUser` / `useWishlist` hooks, types
-3. **Transform** — rewrite imports (70+ rules), JSX attrs, Fresh APIs, Deno-isms, Tailwind v3 → v4
-4. **Cleanup** — delete `islands/`, old routes, `deno.json`; move `static/` → `public/`
-5. **Report** — write `MIGRATION_REPORT.md` with manual review items
-6. **Verify** — 18+ smoke tests (zero old imports, scaffolded files exist)
-
-Your existing `src/sections/`, `src/components/`, and `.deco/blocks/` carry over unchanged. The script gets you to "builds clean with zero old imports" — manual work starts at platform hooks (`useCart`) and runtime tuning, tracked in `MIGRATION_NEXT_STEPS.md`.
-
-### Option A — drive the migration through an AI coding tool (recommended)
-
-`@decocms/start` ships an Agent Skill that primes Claude Code, Cursor, Codex, and other AI coding tools with the full 12-phase migration playbook plus the reference docs and templates. The skill knows what `@decocms/start` supports, runs the migration script for you, and flags anything that needs manual attention as it goes — so you stay in a conversation rather than juggling flags.
-
-Install the skill once:
-
-```sh
-npx skills add decocms/deco-start
-```
-
-Open your Fresh site in your AI tool and prompt:
-
-> migrate this project to TanStack Start
-
-The agent will analyze the site, run the migration phases, talk through anything ambiguous (CSP domains, site-specific loaders, GTM IDs, custom Fresh handlers), and stop on the manual-review items so you can answer in plain English instead of editing config by hand.
-
-See [`@decocms/start#migrating-from-freshpreactdeno`](https://github.com/decocms/deco-start#migrating-from-freshpreactdeno) for the full skill index.
-
-### Option B — run the migration script manually
-
-If you'd rather drive it yourself, the same logic is exposed as a CLI. From the **root of your existing Fresh site**, with nothing pre-installed:
-
-```sh
-# Preview changes (no files written):
-npx -p @decocms/start deco-migrate --dry-run --verbose
-
-# Run the migration in place:
-npx -p @decocms/start deco-migrate
-
-# Migrate a different directory:
-npx -p @decocms/start deco-migrate --source ./my-site
-```
-
-Flags:
-
-| Flag | Description |
-|---|---|
-| `--source <dir>` | Source directory (default: current directory) |
-| `--dry-run` | Preview changes without writing files |
-| `--verbose` | Show detailed output for every file |
-| `--help`, `-h` | Show help |
-
-After it finishes:
-
-```sh
-npm install
-npm run generate:blocks
-npm run generate:schema
-npx tsr generate
-npm run dev
-```
-
-Then open `MIGRATION_REPORT.md` for the manual review checklist (CSP domains, site-specific loaders, GTM, etc.).
-
-### What's left after the script finishes
-
-Open `MIGRATION_NEXT_STEPS.md` in this repo for the canonical follow-up checklist used during the migration of this site. The recurring patterns are:
-
-- Replace `window.STOREFRONT.*` channels (USER, WISHLIST) with `src/platform/<domain>/` modules following the `cart/` shape: `*.types.ts`, `*.actions.ts` (`createServerFn`), `*.hooks.ts` (`useQuery` + `useMutation`), `*.<commerce>.ts` adapter, `index.ts` barrel.
-- Switch internal navigation from `<a href>` to `<Link preload="intent">` from `@tanstack/react-router`.
-- Group flat section `Props` into `*Config` sub-interfaces with JSDoc (see `src/sections/Product/ProductDetails.tsx`).
-- Add scoped skeletons via `useRouterState({ select: s => s.isLoading })` for the bits that actually change during a route transition.
-- Decompose god-components into narrow leaves so React Compiler can auto-memoize them.
 
 ## Quick start
 
@@ -131,7 +50,7 @@ Open `http://localhost:5173`.
 src/
 ├── apps/                 # Site app composition (apps/site.ts)
 ├── routes/               # TanStack Router file routes (__root, $, index, deco/*, account, login)
-├── sections/             # CMS-rendered sections (Header, Footer, Product, Newsletter, …)
+├── sections/             # CMS-registered sections (Header, Footer, Product, Newsletter, …)
 ├── components/           # UI components (header, minicart, product, search, ui, …)
 ├── platform/             # Domain state — TanStack Query hooks + createServerFn actions
 │   ├── cart/             #   cart.{types,actions,hooks,shopify}.ts
@@ -141,6 +60,7 @@ src/
 ├── actions/              # Site-local invoke handlers (wishlist/submit, shipping/simulate)
 ├── hooks/                # useCart, useUser, useWishlist
 ├── sdk/                  # signal, clx, debounce, deviceServer, logger
+├── mocks/                # Local perfume catalog data the public routes render from
 ├── styles/app.css        # Tailwind v4 entry
 ├── setup.ts              # Wires framework + apps + sections (called from worker entry)
 ├── setup/                # Section-specific prop enrichment
@@ -149,17 +69,21 @@ src/
 ├── worker-entry.ts       # Cloudflare Worker entry: admin protocol, CSP, segmentation, caching
 ├── router.tsx            # Router configuration
 ├── runtime.ts            # Runtime helpers
-├── context.ts            # Site context
-└── server/cms/           # Generated: blocks.gen.ts, sections.gen.ts (do not edit by hand)
+└── context.ts             # Site context
 ```
+
+`.deco/blocks.gen.ts` / `.deco/sections.gen.ts` / `.deco/meta.gen.json` are generated — do not edit by hand (see `AGENTS.md`).
 
 ## How rendering works
 
+The public storefront routes (`index.tsx`, `discovery.tsx`, `cart.tsx`, `login.tsx`, `account.tsx`, and the catch-all `$.tsx` for product pages) are **hardcoded React reading from `src/mocks/catalog.ts`** — they do not resolve content from `.deco/blocks/`. The deco CMS block-composition system is only reachable through the admin/preview routes (`/deco/render`, `/deco/invoke.$`, `/deco/meta`), not the public site.
+
+What deco framework plumbing *is* live:
+
 1. A request hits `src/worker-entry.ts` → `createDecoWorkerEntry` (admin routes, edge cache, CSP, device segmentation).
-2. Non-admin requests fall through to the TanStack Start server entry (`src/server.ts`).
-3. The catch-all route (`src/routes/$.tsx`) calls the framework's CMS resolver, which loads the page's blocks via `src/server/cms/blocks.gen.ts`.
-4. Blocks resolve to sections under `src/sections/`. Sections receive props enriched by their loader and metadata from `applySectionConventions` in `setup.ts`.
-5. Commerce data (Shopify PDP, PLP, search, cart) comes from `@decocms/apps/shopify` loaders, wired via `autoconfigApps`.
+2. Non-admin requests fall through to the TanStack Start server entry (`src/server.ts`) and the hardcoded routes above.
+3. `src/setup.ts` reads `.deco/blocks/site.json` for SEO `<head>` meta, theme, and app registration (Shopify, htmx, analytics) — the only `.deco/blocks/*.json` files still in this repo (the rest were deco template demo content, removed).
+4. Commerce loaders/actions register via `@decocms/apps-shopify` and `autoconfigApps`, available for any section that opts back into CMS-driven rendering, but nothing currently does.
 
 ## Data fetching pattern
 
@@ -193,7 +117,7 @@ Override per-route in `src/cache-config.ts`.
 
 ## Deployment
 
-Cloudflare Workers via Wrangler. Configuration is in `wrangler.jsonc` (entry: `src/worker-entry.ts`).
+Cloudflare Workers via Wrangler. Configuration is in `wrangler.jsonc` (entry: `src/worker-entry.ts`, worker name: `sillage`).
 
 CI/CD is automatic (see [`.github/workflows/README.md`](./.github/workflows/README.md)):
 
@@ -210,19 +134,17 @@ npm run deploy
 
 For Argo CD / Kubernetes deployment manifests see `deploy/`.
 
-## Migration artifacts
+## Follow-up work
 
-This repo was itself produced by the migration flow above. Two generated docs are kept for reference:
+See `TODO-MIGRATION.md` for the open cleanup checklist and canonical patterns to follow (Props grouping, skeleton scoping, `window.STOREFRONT.*` migration, etc.).
 
-- `MIGRATION_REPORT.md` — files scaffolded / transformed / deleted, manual review items
-- `MIGRATION_NEXT_STEPS.md` — open follow-up work and canonical patterns to follow
+## Framework reference
 
-## Help
+This repo runs on the deco CMS framework (`@decocms/start`, `@decocms/apps`) for its admin protocol, worker entry, and edge caching:
 
 - [deco.cx docs](https://www.deco.cx/docs/en/overview)
-- [Discord](https://deco.cx/discord)
 - Framework source: [`@decocms/start`](https://github.com/decocms/deco-start), [`@decocms/apps`](https://github.com/decocms/apps-start)
 
 ## License
 
-MIT
+Apache 2.0 — see `LICENSE`.

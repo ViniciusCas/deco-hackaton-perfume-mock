@@ -7,8 +7,8 @@ export type ButtonSize = "sm" | "md";
 
 const VARIANT_CLASS: Record<ButtonVariant, string> = {
   glass: "frost text-ink hover:bg-glass-strong",
-  solid: "bg-ink text-white hover:bg-ink-soft",
-  outline: "bg-transparent text-ink border border-gray-300 hover:border-ink",
+  solid: "bg-rose-deep text-white hover:bg-rose",
+  outline: "bg-transparent text-ink border border-line-strong hover:border-ink",
 };
 
 const SIZE_CLASS: Record<ButtonSize, string> = {
@@ -45,7 +45,7 @@ export default function Button(props: Props) {
   const { variant = "glass", size = "sm", className, children } = props;
 
   const classes = clx(
-    "tap-scale inline-flex items-center justify-center rounded-sm font-medium capitalize whitespace-nowrap transition-colors duration-(--duration-fast)",
+    "tap-scale inline-flex items-center justify-center rounded-sm font-display font-medium tracking-(--tracking-label) uppercase whitespace-nowrap transition-colors duration-(--duration-fast)",
     VARIANT_CLASS[variant],
     SIZE_CLASS[size],
     className,
@@ -59,7 +59,13 @@ export default function Button(props: Props) {
     );
   }
 
-  const { type = "button", ...rest } = props as AsButton;
+  const {
+    variant: _variant,
+    size: _size,
+    className: _className,
+    type = "button",
+    ...rest
+  } = props as AsButton;
   return (
     <button type={type} className={classes} {...rest}>
       {children}

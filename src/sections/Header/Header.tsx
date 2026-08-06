@@ -1,5 +1,6 @@
 import type { HTMLWidget, ImageWidget } from "~/types/widgets";
 import type { SiteNavigationElement } from "@decocms/apps-commerce/types";
+import { Link } from "@tanstack/react-router";
 import Alert from "../../components/header/Alert";
 import Bag from "../../components/header/Bag";
 import HeaderNav from "../../components/header/HeaderNav";
@@ -8,6 +9,7 @@ import SignIn from "../../components/header/SignIn";
 import { type SearchbarProps } from "../../components/search/Searchbar/Form";
 import Drawer from "../../components/ui/Drawer";
 import Icon from "../../components/ui/Icon";
+import Image from "../../components/ui/Image";
 import { SIDEMENU_CONTAINER_ID, SIDEMENU_DRAWER_ID } from "../../constants";
 import { useDevice } from "@decocms/blocks/sdk/useDevice";
 import { type LoadingFallbackProps } from "~/types/deco";
@@ -30,12 +32,17 @@ export interface SectionProps {
    * @title Searchbar
    * @description Searchbar configuration
    */
-  searchbar: SearchbarProps;
+  searchbar?: SearchbarProps;
   /** @title Logo */
-  logo: Logo;
+  logo?: Logo;
+  /**
+   * @title Site name
+   * @description Text wordmark shown when no logo image is set
+   */
+  siteName?: string;
   /**
    * @title Shipping note
-   * @description Small promo line shown at the bottom of the mega menu
+   * @description Promo line shown in the utility bar above the header
    * @default "Frete grátis em compras acima de R$500."
    */
   shippingNote?: string;
@@ -47,123 +54,144 @@ export interface SectionProps {
 
 type Props = SectionProps;
 
-const MOBILE_ICON_LABEL_CLASS =
-  "tap-scale flex size-10 items-center justify-center rounded-sm text-ink transition-colors duration-(--duration-fast) hover:bg-white/60";
+const ICON_BUTTON_CLASS =
+  "tap-scale flex size-11 items-center justify-center rounded-sm text-ink transition-colors duration-(--duration-fast) hover:bg-white/60";
 
-const Desktop = ({ navItems, logo, shippingNote }: Props) => (
-  <>
-    <div className="flex items-center justify-between gap-3 px-3 pt-3 pb-2">
-      <label
-        htmlFor={SIDEMENU_DRAWER_ID}
-        aria-label="Open menu"
-        className="frost tap-scale flex size-10 shrink-0 items-center justify-center rounded-sm text-ink transition-colors duration-(--duration-fast) hover:bg-glass-strong"
-      >
-        <Icon id="menu" size={18} />
-      </label>
-
-      <HeaderNav
-        navItems={navItems ?? []}
-        logo={logo}
-        shippingNote={shippingNote ?? "Frete grátis em compras acima de R$500."}
+function Wordmark({
+  logo,
+  siteName,
+  className,
+}: {
+  logo?: Logo;
+  siteName?: string;
+  className: string;
+}) {
+  if (logo) {
+    return (
+      <Image
+        src={logo.src}
+        alt={logo.alt}
+        width={logo.width ?? 96}
+        height={logo.height ?? 26}
+        className="h-6 w-auto object-contain"
+        loading="eager"
       />
+    );
+  }
+  if (!siteName) return null;
+  return <span className={className}>{siteName}</span>;
+}
 
-      <div className="flex items-center gap-1.5">
-        <SignIn variant="desktop" />
-        <Bag />
-      </div>
+const Desktop = ({ navItems, logo, siteName }: Props) => (
+  <div className="grid h-19 grid-cols-[1fr_auto_1fr] items-center px-12">
+    <HeaderNav navItems={navItems ?? []} />
+
+    <Link to="/" aria-label="Home" className="justify-self-center">
+      <Wordmark
+        logo={logo}
+        siteName={siteName}
+        className="pl-[0.4em] font-display text-[22px] font-normal text-ink uppercase tracking-[0.4em]"
+      />
+    </Link>
+
+    <div className="flex items-center justify-self-end gap-1">
+      <label htmlFor={SIDEMENU_DRAWER_ID} aria-label="Search" className={ICON_BUTTON_CLASS}>
+        <Icon id="search" size={19} />
+      </label>
+      <SignIn />
+      <Bag />
     </div>
-  </>
+  </div>
 );
 
-const Mobile = ({ logo }: Props) => (
-  <>
-    <div className="frost mx-3 mt-3 flex h-14 items-center justify-between gap-2 rounded-sm px-2">
-      <label
-        htmlFor={SIDEMENU_DRAWER_ID}
-        aria-label="Open menu"
-        className={MOBILE_ICON_LABEL_CLASS}
-      >
-        <Icon id="menu" size={18} />
+const Mobile = ({ logo, siteName }: Props) => (
+  <div className="grid h-14 grid-cols-[44px_1fr_88px] items-center px-2">
+    <label htmlFor={SIDEMENU_DRAWER_ID} aria-label="Open menu" className={ICON_BUTTON_CLASS}>
+      <Icon id="menu" size={20} />
+    </label>
+
+    <Link to="/" aria-label="Home" className="justify-self-center text-center">
+      <Wordmark
+        logo={logo}
+        siteName={siteName}
+        className="pl-[0.34em] font-display text-[17px] font-normal text-ink uppercase tracking-[0.34em]"
+      />
+    </Link>
+
+    <div className="flex items-center justify-self-end gap-1">
+      <label htmlFor={SIDEMENU_DRAWER_ID} aria-label="Search" className={ICON_BUTTON_CLASS}>
+        <Icon id="search" size={19} />
       </label>
-
-      {logo && (
-        <a href="/" aria-label="Store logo" className="flex items-center">
-          <img
-            src={logo.src}
-            alt={logo.alt}
-            width={logo.width ? Math.min(logo.width, 88) : 88}
-            height={logo.height ?? 20}
-            className="h-5 w-auto object-contain"
-          />
-        </a>
-      )}
-
-      <div className="flex items-center gap-1">
-        <SignIn variant="mobile" />
-        <Bag size="sm" />
-      </div>
+      <Bag />
     </div>
-  </>
+  </div>
 );
 
 function Header({
   alerts = [],
-  logo = {
-    src: "https://decoims.com/decocms/e8c6326e-e009-4e3c-9787-b2fe25a1b993/deco-logo.png",
-    width: 67,
-    height: 28,
-    alt: "Logo",
-  },
+  logo,
+  siteName = "Sillage",
   navItems,
   searchbar,
   loading,
+  shippingNote = "Frete grátis em compras acima de R$500.",
   ...props
 }: Props) {
   const device = useDevice();
   return (
-    <header className="fixed top-0 inset-x-0 z-50">
+    <header className="fixed inset-x-0 top-0 z-50">
+      {shippingNote && (
+        <div className="flex h-[34px] items-center justify-center bg-accent px-4 text-center font-display text-2xs font-medium tracking-(--tracking-label) text-white uppercase">
+          {shippingNote}
+        </div>
+      )}
+
       {alerts.length > 0 && (
         <div className="glass-strong flex h-8 items-center justify-center text-2xs">
           <Alert alerts={alerts} />
         </div>
       )}
 
-      <Drawer
-        id={SIDEMENU_DRAWER_ID}
-        aside={
-          <Drawer.Aside title="Menu" drawer={SIDEMENU_DRAWER_ID}>
-            {loading === "lazy" ? (
-              <div
-                id={SIDEMENU_CONTAINER_ID}
-                className="flex h-full items-center justify-center"
-                style={{ minWidth: "100vw" }}
-              >
-                <span className="loading loading-spinner" />
-              </div>
-            ) : (
-              <Menu navItems={navItems ?? []} searchbar={searchbar} />
-            )}
-          </Drawer.Aside>
-        }
-      />
+      <div className="frost border-b border-line">
+        <Drawer
+          id={SIDEMENU_DRAWER_ID}
+          aside={
+            <Drawer.Aside title="Menu" drawer={SIDEMENU_DRAWER_ID}>
+              {loading === "lazy" ? (
+                <div
+                  id={SIDEMENU_CONTAINER_ID}
+                  className="flex h-full items-center justify-center"
+                  style={{ minWidth: "100vw" }}
+                >
+                  <span className="loading loading-spinner" />
+                </div>
+              ) : (
+                <Menu navItems={navItems ?? []} searchbar={searchbar} />
+              )}
+            </Drawer.Aside>
+          }
+        />
 
-      {device === "desktop" ? (
-        <Desktop
-          logo={logo}
-          navItems={navItems}
-          searchbar={searchbar}
-          loading={loading}
-          {...props}
-        />
-      ) : (
-        <Mobile
-          logo={logo}
-          navItems={navItems}
-          searchbar={searchbar}
-          loading={loading}
-          {...props}
-        />
-      )}
+        {device === "desktop" ? (
+          <Desktop
+            logo={logo}
+            siteName={siteName}
+            navItems={navItems}
+            searchbar={searchbar}
+            loading={loading}
+            {...props}
+          />
+        ) : (
+          <Mobile
+            logo={logo}
+            siteName={siteName}
+            navItems={navItems}
+            searchbar={searchbar}
+            loading={loading}
+            {...props}
+          />
+        )}
+      </div>
     </header>
   );
 }

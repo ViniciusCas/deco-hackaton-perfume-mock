@@ -46,7 +46,10 @@ const APP_REGISTRY: AppRegistry = [
 createSiteSetup({
   sections: import.meta.glob("./sections/**/*.tsx") as Record<string, () => Promise<any>>,
   blocks: generatedBlocks,
-  productionOrigins: ["https://www.demo-storefront.com.br", "https://demo-storefront.com.br"],
+  // No production domain provisioned yet (see .scratch/remove-deco-identity
+  // ticket 03) — fill in once one exists. Safe to leave empty: the framework
+  // no-ops URL-stripping when this is unset.
+  productionOrigins: [],
   initPlatform: (blocks) => initShopifyFromBlocks(blocks),
   onResolveError: (error, resolveType, context) => {
     console.error(`[CMS-DEBUG] ${context} "${resolveType}" failed:`, error);

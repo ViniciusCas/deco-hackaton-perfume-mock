@@ -80,7 +80,7 @@ export default defineConfig({
   },
   define: {
     "process.env.DECO_SITE_NAME": JSON.stringify(
-      process.env.DECO_SITE_NAME || "demo-storefront"
+      process.env.DECO_SITE_NAME || "sillage"
     ),
   },
   esbuild: {

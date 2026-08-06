@@ -5,7 +5,7 @@ export interface AccountContextValue {
 }
 
 const Account = createContext<AccountContextValue>({
-  name: "demo-storefront",
+  name: "sillage",
 });
 
 export default Account;

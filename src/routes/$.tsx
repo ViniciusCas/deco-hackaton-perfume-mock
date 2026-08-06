@@ -1,52 +1,102 @@
+import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { cmsRouteConfig, DecoPageRenderer } from "@decocms/tanstack";
-import { deferredSectionLoader } from "@decocms/tanstack/sdk/deferredSectionLoader";
-
-const routeConfig = cmsRouteConfig({
-  siteName: "Storefront-tanstack",
-  defaultTitle: "Storefront-tanstack",
-  ignoreSearchParams: ["skuId"],
-  // Keep the previous route UI visible while the loader re-runs on filter/sort
-  // navigation. Without this, framework defaults (pendingMs=200) flash the
-  // pending UI. The SearchResult section refetches its own data via TanStack
-  // Query (see useProductListingPage), so only the products grid swaps.
-  pendingMs: 60_000,
-  pendingMinMs: 0,
-});
+import Button from "~/components/ui/Button";
+import ProductTile from "~/components/home/ProductTile";
+import ProductHeroImage from "~/components/home/ProductHeroImage";
+import { findBySlug, CATALOG } from "~/mocks/catalog";
 
 export const Route = createFileRoute("/$")({
-  ...routeConfig,
-  component: CmsPage,
-  notFoundComponent: NotFoundPage,
+  component: CatchAllPage,
 });
 
-function CmsPage() {
-  const data = Route.useLoaderData() as Record<string, any> | null;
-  if (!data) return <NotFoundPage />;
+const SIZES = ["30 ml", "50 ml", "100 ml"];
+
+function ProductPage({ slug }: { slug: string }) {
+  const entry = findBySlug(slug)!;  
+  const [size, setSize] = useState(SIZES[1]);
+  const related = CATALOG.filter((c) => c.slug !== slug).slice(0, 4);
 
   return (
-    <DecoPageRenderer
-      sections={data.resolvedSections ?? []}
-      deferredSections={data.deferredSections ?? []}
-      deferredPromises={data.deferredPromises}
-      pagePath={data.pagePath}
-      pageUrl={data.pageUrl}
-      loadDeferredSectionFn={deferredSectionLoader}
-    />
+    <div className="pt-[90px] sm:pt-[110px]">
+      <div className="grid grid-cols-1 gap-8 px-5 py-8 sm:grid-cols-2 sm:gap-14 sm:px-18 sm:py-14">
+        <ProductHeroImage entry={entry} />
+
+        <div className="sm:max-w-md">
+          <div className="mb-2 font-display text-2xs font-medium tracking-(--tracking-label) text-accent uppercase">
+            {entry.brand} · {entry.family}
+          </div>
+          <h1 className="font-display text-3xl font-light tracking-(--tracking-display) text-ink sm:text-4xl">
+            {entry.name}
+          </h1>
+          <p className="mt-3 text-sm text-muted">{entry.notes}</p>
+          <div className="mt-4 font-display text-2xl text-ink">${entry.price}</div>
+
+          <div className="mt-7">
+            <div className="mb-2.5 font-display text-2xs font-medium tracking-(--tracking-label) text-ink uppercase">
+              Size
+            </div>
+            <div className="flex gap-2">
+              {SIZES.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setSize(s)}
+                  className={`rounded-sm border px-4 py-2.5 text-sm ${
+                    s === size
+                      ? "border-rose-deep bg-rose-deep text-white"
+                      : "border-line-strong text-ink"
+                  }`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-7 flex flex-col gap-2">
+            <Button type="button" variant="solid" size="md" disabled className="w-full sm:w-auto">
+              Add to bag — demo
+            </Button>
+            <p className="text-xs text-muted">
+              This catalog is a design demo — nothing here is wired to real checkout.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="px-5 pb-14 sm:px-18">
+        <h2 className="mb-5 font-display text-2xl font-normal tracking-(--tracking-display) text-ink">
+          You might also like
+        </h2>
+        <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-4 sm:gap-5">
+          {related.map((r) => (
+            <ProductTile key={r.slug} entry={r} />
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
 
 function NotFoundPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="text-center">
-        <h1 className="text-6xl font-bold text-base-content/20 mb-4">404</h1>
-        <h2 className="text-2xl font-bold mb-2">Page Not Found</h2>
-        <p className="text-base-content/60 mb-6">No CMS page block matches this URL.</p>
-        <a href="/" className="btn btn-primary">
-          Go Home
-        </a>
+    <div className="flex min-h-[70vh] flex-col items-center justify-center px-4 pt-[90px] text-center sm:pt-[110px]">
+      <h1 className="font-display text-4xl font-light text-ink">We couldn't find that page</h1>
+      <p className="mt-3 max-w-sm text-sm text-muted">
+        The page you're looking for doesn't exist in this demo catalog.
+      </p>
+      <div className="mt-7">
+        <Button href="/" variant="solid" size="md">
+          Back to Sillage
+        </Button>
       </div>
     </div>
   );
+}
+
+function CatchAllPage() {
+  const { _splat } = Route.useParams();
+  const slug = (_splat ?? "").split("/").filter(Boolean).pop() ?? "";
+  const entry = findBySlug(slug);
+  return entry ? <ProductPage slug={slug} /> : <NotFoundPage />;
 }

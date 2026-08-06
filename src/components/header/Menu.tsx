@@ -12,7 +12,7 @@ function MenuItem({ item }: { item: SiteNavigationElement }) {
   return (
     <div className="collapse collapse-arrow">
       <input type="checkbox" />
-      <div className="collapse-title min-h-0 px-0 py-4 text-lg font-medium text-ink capitalize">
+      <div className="collapse-title min-h-0 px-0 py-4 font-display text-lg font-normal text-ink capitalize">
         {item.name}
       </div>
       <div className="collapse-content px-0">
@@ -51,9 +51,11 @@ function Menu({ navItems = [], searchbar }: Props) {
 
       <ul className="flex flex-col gap-1 border-t border-ink-soft/10 py-4">
         {[
+          { href: "/discovery", icon: "search" as const, label: "Discovery" },
+          { href: "/cart", icon: "shopping_bag" as const, label: "Sua sacola" },
           { href: "/wishlist", icon: "favorite" as const, label: "Lista de desejos" },
-          { href: "https://www.deco.cx", icon: "home_pin" as const, label: "Nossas lojas" },
-          { href: "https://www.deco.cx", icon: "call" as const, label: "Fale conosco" },
+          { href: "#", icon: "home_pin" as const, label: "Nossas lojas" },
+          { href: "#", icon: "call" as const, label: "Fale conosco" },
           { href: "/account", icon: "account_circle" as const, label: "Minha conta" },
         ].map(({ href, icon, label }) => (
           <li key={label}>
