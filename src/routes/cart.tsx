@@ -134,7 +134,7 @@ function FreeSamplesMock() {
               onClick={() => toggle(name)}
               className={`${LABEL_CLASS} rounded-sm border px-4 py-2.5 ${
                 on
-                  ? "border-accent bg-accent text-white"
+                  ? "border-accent bg-accent text-black"
                   : "border-line-strong bg-transparent text-ink"
               }`}
             >
@@ -244,7 +244,7 @@ function CartPage() {
               // router's <Link>, which only handles in-app routes.
               <a
                 href={cart.checkoutUrl}
-                className="tap-scale flex h-10 w-full items-center justify-center rounded-sm bg-rose-deep font-display text-sm font-medium tracking-(--tracking-label) text-white uppercase transition-colors duration-(--duration-fast) hover:bg-rose"
+                className="tap-scale flex h-10 w-full items-center justify-center rounded-sm bg-rose font-display text-sm font-medium tracking-(--tracking-label) text-black uppercase transition-colors duration-(--duration-fast) hover:bg-rose-deep hover:text-white"
               >
                 Checkout
               </a>

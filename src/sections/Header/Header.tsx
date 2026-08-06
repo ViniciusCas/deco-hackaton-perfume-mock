@@ -141,7 +141,7 @@ function Header({
   return (
     <header className="fixed inset-x-0 top-0 z-50">
       {shippingNote && (
-        <div className="flex h-[34px] items-center justify-center bg-accent px-4 text-center font-display text-2xs font-medium tracking-(--tracking-label) text-white uppercase">
+        <div className="flex h-[34px] items-center justify-center bg-rose px-4 text-center font-display text-2xs font-medium tracking-(--tracking-label) text-black uppercase">
           {shippingNote}
         </div>
       )}

@@ -92,8 +92,8 @@ function HomePage() {
       </section>
 
       {/* Editorial band */}
-      <section className="bg-rose-deep px-6 py-11 text-blush sm:px-18 sm:py-22">
-        <div className="mb-3.5 font-display text-2xs font-medium tracking-(--tracking-label) text-gold uppercase sm:mb-5.5">
+      <section className="bg-rose px-6 py-11 text-black sm:px-18 sm:py-22">
+        <div className="mb-3.5 font-display text-2xs font-medium tracking-(--tracking-label) text-ink uppercase sm:mb-5.5">
           The house
         </div>
         <p className="max-w-xl font-display text-2xl leading-snug font-light tracking-(--tracking-display) sm:text-4xl">

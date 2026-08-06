@@ -43,7 +43,7 @@ function ProductPage({ slug }: { slug: string }) {
                   onClick={() => setSize(s)}
                   className={`rounded-sm border px-4 py-2.5 text-sm ${
                     s === size
-                      ? "border-rose-deep bg-rose-deep text-white"
+                      ? "border-rose bg-rose text-black"
                       : "border-line-strong text-ink"
                   }`}
                 >

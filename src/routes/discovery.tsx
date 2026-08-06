@@ -55,7 +55,7 @@ function scoreReply(input: string): { text: string; slugs: string[] } {
 function Avatar({ name, size = 40 }: { name: string; size?: number }) {
   return (
     <div
-      className="flex shrink-0 items-center justify-center rounded-full bg-accent font-display text-white"
+      className="flex shrink-0 items-center justify-center rounded-full bg-accent font-display text-black"
       style={{ width: size, height: size, fontSize: size * 0.4 }}
     >
       {name.slice(0, 1)}
@@ -153,7 +153,7 @@ function DiscoveryPage() {
                 className={`max-w-[78%] rounded-2xl px-5 py-4 text-sm leading-relaxed whitespace-pre-wrap ${
                   m.role === "assistant"
                     ? "self-start rounded-tl-md bg-blush-deep text-ink"
-                    : "self-end rounded-tr-md bg-accent text-white"
+                    : "self-end rounded-tr-md bg-accent text-black"
                 }`}
               >
                 {m.text}

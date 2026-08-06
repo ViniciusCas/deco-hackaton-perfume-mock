@@ -54,7 +54,7 @@ export default function ProductCardVariants({
               onMouseEnter={() => onSelect(href)}
               className={clx(
                 "tap-scale rounded-xs px-1.5 py-0.5 text-2xs capitalize transition-colors duration-(--duration-fast)",
-                checked ? "bg-rose-deep text-white" : "frost text-muted-soft",
+                checked ? "bg-rose text-black" : "frost text-muted-soft",
               )}
             >
               {value}

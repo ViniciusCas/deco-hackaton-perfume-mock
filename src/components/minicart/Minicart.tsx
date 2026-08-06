@@ -129,7 +129,7 @@ function Footer({ cart }: { cart: CartState }) {
         {cart.checkoutUrl ? (
           <a
             href={cart.checkoutUrl}
-            className="tap-scale flex h-10 items-center justify-center rounded-sm bg-rose-deep font-display text-2xs font-medium tracking-(--tracking-label) text-white uppercase hover:bg-rose"
+            className="tap-scale flex h-10 items-center justify-center rounded-sm bg-rose font-display text-2xs font-medium tracking-(--tracking-label) text-black uppercase hover:bg-rose-deep hover:text-white"
           >
             Begin checkout
           </a>

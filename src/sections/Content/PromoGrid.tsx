@@ -90,7 +90,7 @@ export default function PromoGrid({ title, tabs = [] }: Props) {
               onClick={() => setActiveIndex(index)}
               className={clx(
                 "tap-scale rounded-sm px-4 py-2 text-sm font-medium transition-colors duration-(--duration-fast)",
-                index === activeIndex ? "bg-rose-deep text-white" : "frost text-ink-soft",
+                index === activeIndex ? "bg-rose text-black" : "frost text-ink-soft",
               )}
             >
               {tab.label}

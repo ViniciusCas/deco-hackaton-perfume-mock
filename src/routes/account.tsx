@@ -40,7 +40,7 @@ function AccountPage() {
   return (
     <div className="mx-auto max-w-4xl px-4 pt-[90px] pb-14 sm:px-8 sm:pt-[110px]">
       <div className="mb-10 flex items-center gap-4">
-        <div className="flex size-13 shrink-0 items-center justify-center rounded-full bg-accent font-display text-lg text-white">
+        <div className="flex size-13 shrink-0 items-center justify-center rounded-full bg-accent font-display text-lg text-black">
           {initials}
         </div>
         <div>

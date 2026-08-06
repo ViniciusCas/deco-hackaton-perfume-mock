@@ -30,7 +30,7 @@ export default function Bag() {
         <Icon id="shopping_bag" size={19} />
       )}
       {!busy && count > 0 && (
-        <span className="absolute top-1.5 right-1.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-rose-deep px-0.5 text-[9px] leading-none font-medium tabular-nums text-white">
+        <span className="absolute top-1.5 right-1.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-rose px-0.5 text-[9px] leading-none font-medium tabular-nums text-black">
           {count > 9 ? "9+" : count}
         </span>
       )}
