@@ -205,6 +205,20 @@ accessed from a second Worker via its own Hyperdrive binding and its own
   a plain `<img>` with the real source URL directly; all three cart-adjacent
   views switched to match. Verified locally: real `fimgs.net` URLs render
   directly in cart/checkout markup, matching `ProductTile`'s working pattern.
+- [Migrate catalog reads to sillage-api](issues/10-catalog-migration.md) —
+  catalog joins cart/wishlist/address/orders in moving fully to
+  `sillage-api` (reversing the original "catalog stays on `createServerFn`"
+  call from ticket 01 — account/auth is unaffected, still out of scope).
+  Real server-side pagination *and* filtering (not just a paginated wire
+  format) on `GET /v1/products`, live per-filter facet counts (a dedicated
+  facets endpoint), the header searchbar moving from client-cached-array
+  search to debounced API calls, and PDP's related-products rail switching
+  from arbitrary to same-family. Split into four implementation tickets
+  since the actual build is well beyond one session:
+  [Build sillage-api's product endpoints](issues/11-catalog-api-endpoints.md),
+  [Move /fragrance to server-side filtering](issues/12-fragrance-server-side.md),
+  [Move header search to debounced API calls](issues/13-header-search-api.md),
+  [Migrate PDP/home-collections and remove the old catalog surface](issues/14-catalog-cutover-remaining.md).
 
 ## Not yet specified
 
