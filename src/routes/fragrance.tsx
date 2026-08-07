@@ -88,15 +88,29 @@ export const Route = createFileRoute("/fragrance")({
     // this calls sillageApiFetch directly rather than needing a
     // createServerFn wrapper (that's only required for server-only imports
     // like getRequest(), which cart's SSR prefetch needs and this doesn't).
+    //
+    // Each `.catch(() => {})` individually (not one around the whole
+    // Promise.all) — matches every other SSR prefetch in this codebase
+    // (__root.tsx's cart/user/catalog prefetches). A transient failure
+    // calling sillage-api (cold start, subrequest hiccup) degrades to the
+    // client-side fetch instead of crashing the whole route: this was a
+    // real bug, not theoretical — an unhandled rejection here threw
+    // uncaught through the loader and 500'd every production request until
+    // fixed, reproduced via `wrangler dev --remote` against the exact
+    // deployed build.
     await Promise.all([
-      context.queryClient.ensureQueryData({
-        queryKey: PRODUCTS_QUERY_KEY(listFilters),
-        queryFn: () => fetchProducts(listFilters),
-      }),
-      context.queryClient.ensureQueryData({
-        queryKey: FACETS_QUERY_KEY(filters),
-        queryFn: () => fetchProductFacets(filters),
-      }),
+      context.queryClient
+        .ensureQueryData({
+          queryKey: PRODUCTS_QUERY_KEY(listFilters),
+          queryFn: () => fetchProducts(listFilters),
+        })
+        .catch(() => {}),
+      context.queryClient
+        .ensureQueryData({
+          queryKey: FACETS_QUERY_KEY(filters),
+          queryFn: () => fetchProductFacets(filters),
+        })
+        .catch(() => {}),
     ]);
   },
 });

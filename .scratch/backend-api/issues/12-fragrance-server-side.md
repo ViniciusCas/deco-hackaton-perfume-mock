@@ -80,4 +80,59 @@ happy path:
 `sillage-api` deployed (Version `114ffe77`) and smoke-tested live —
 `GET /v1/products?limit=2` returns `total: 354`, `GET /v1/products/facets`
 returns 43 families / 35 brands. Both repos typecheck and build clean.
-Website repo not yet committed/deployed as of this record.
+
+## Deploy 1 postmortem: found and fixed a production-only crash
+
+First website deploy (Version `8213b862`) made `/fragrance` **500 in
+production while working fine locally** (`vite dev`). Root cause: the new
+loader's SSR prefetch had **no error handling**, unlike every other SSR
+prefetch in this codebase (`__root.tsx`'s cart/user/catalog prefetches all
+wrap their calls in `.catch(() => {})`). A transient failure calling
+`sillage-api` — cold start, subrequest hiccup, whatever — threw uncaught
+through the loader, and TanStack Start's production error boundary caught
+it and rendered a redacted `"Something went wrong."` (real error message
+stripped in production builds, so the live site gave no clue).
+
+**How this was actually diagnosed** (worth recording — none of the
+straightforward approaches worked):
+- `wrangler tail` showed `"outcome": "ok"` with no exception and no
+  console output — the error was caught by the app's own boundary, not a
+  platform-level crash, so the runtime's own exception tracking never saw it.
+- Comparing local (`vite dev`) vs `npm run build` + local `wrangler dev`
+  against the actual built artifact: **both succeeded**, ruling out a
+  build-time/bundling issue.
+- The real signal came from **`wrangler dev --remote`** (runs the exact
+  built artifact against real bindings/network conditions, not Miniflare's
+  local loop) — this reliably reproduced the 500, while local `wrangler dev`
+  against the same artifact did not. Confirmed it wasn't a red herring from
+  the reproduction method by checking `/`, `/account`, `/cart` (other
+  routes touching Hyperdrive/sillage-api) all succeeded in the same
+  `--remote` session.
+- The actual error text was recovered from the SSR-streamed router state
+  embedded in the page's own hydration script (`$_TSR.router(...)`), not
+  from any server log — `e: new Error("Something went wrong.")` confirmed
+  an error was thrown and caught at the `/fragrance` route match
+  specifically.
+
+**Fixed**: added `.catch(() => {})` to each of the two `ensureQueryData`
+calls individually (not one catch around the whole `Promise.all`),
+matching the established pattern. Verified fix via the same
+`wrangler dev --remote` reproduction (500 → 200), then deployed for real
+(Version `858c45b7`) and confirmed `/fragrance` returns 200 on the actual
+production URL across three consecutive requests.
+
+**Known remaining gap, not fully resolved**: even after the fix, the SSR
+prefetch itself doesn't appear to successfully populate data in
+production — `/fragrance` still shows "0 fragrances" at first paint
+(confirmed on the real deployed URL, not just the `--remote` reproduction).
+The crash is gone (graceful degradation via the `.catch`), but *why* the
+prefetch fetch itself fails server-side — when the exact same
+`sillageApiFetch` mechanism is proven working for client-side calls across
+cart/wishlist/address all session, and cart's own SSR prefetch (via
+`createServerFn`) works fine — is unresolved. Not chased further given
+time spent already and that the site is now functional, not broken: real
+users should still get correct data via the client-side `useProducts()`/
+`useProductFacets()` fetch after hydration (same fallback path already
+accepted for guest-cart SSR earlier in this map), though this specific
+claim **could not be verified without a real browser** in this session.
+Logged as fog on the map, not silently closed as fully solved.
