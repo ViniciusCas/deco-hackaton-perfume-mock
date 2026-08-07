@@ -71,8 +71,12 @@ fix recovering data already present, not new data sourcing.
 
 ## Not yet specified
 
-_(none — decisions above fully pin the design; proceeding directly to
-implementation tickets rather than further charting)_
+- Dropping the old `products.notes`/`products.mood` columns. The map's own
+  decision said "drop once consumers migrate," but `discovery.tsx`
+  explicitly stays on them (out of scope per an earlier, separate scoping
+  decision on the backend-api map), so they can't be dropped without
+  breaking it. Revisit together with whenever/if `discovery.tsx` itself
+  migrates off the old catalog surface.
 
 ## Out of scope
 
