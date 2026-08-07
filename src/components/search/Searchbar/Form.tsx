@@ -1,14 +1,14 @@
 /**
- * Search bar — filters the catalog (prefetched into the query cache by
- * __root.tsx, see ~/platform/catalog) client-side; no per-keystroke network
- * call. Typing shows a live dropdown of the top matches by name/brand/
- * family/notes; Enter (or the search button) sends the full query to
- * /fragrance, which applies the same match as an additional filter
- * alongside family/brand/price.
+ * Search bar — live suggestions come from sillage-api (`GET /v1/products
+ * ?search=...`), debounced, not a client-cached catalog array (see
+ * .scratch/backend-api/issues/13-header-search-api.md). Enter (or the
+ * search button) sends the full query to /fragrance, which applies the
+ * same match server-side alongside family/brand/price.
  */
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { type CatalogEntry, useCatalog } from "~/platform/catalog";
+import { useProducts } from "~/platform/catalog/products.hooks";
+import { useDebouncedValue } from "~/sdk/useDebouncedValue";
 import { SEARCHBAR_INPUT_FORM_ID, SEARCH_OVERLAY_ID } from "../../../constants";
 import Icon from "../../ui/Icon";
 
@@ -23,11 +23,6 @@ export interface SearchbarProps {
 
 const MAX_SUGGESTIONS = 6;
 
-function matches(entry: CatalogEntry, needle: string): boolean {
-  const haystack = `${entry.name} ${entry.brand} ${entry.family} ${entry.notes}`.toLowerCase();
-  return haystack.includes(needle);
-}
-
 function closeSearchOverlay() {
   const toggle = document.getElementById(SEARCH_OVERLAY_ID) as HTMLInputElement | null;
   if (toggle) toggle.checked = false;
@@ -37,7 +32,11 @@ export default function Searchbar({ placeholder = "What are you looking for?" }:
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
-  const { catalog } = useCatalog();
+  const debouncedQuery = useDebouncedValue(query.trim(), 300);
+  const { items: suggestions } = useProducts(
+    { search: debouncedQuery || undefined, limit: MAX_SUGGESTIONS },
+    { enabled: debouncedQuery.length > 0 },
+  );
 
   // The overlay this searchbar lives in is a CSS-only show/hide (a checkbox
   // toggle) — this component mounts once, while it's still closed, so a
@@ -73,12 +72,6 @@ export default function Searchbar({ placeholder = "What are you looking for?" }:
       cancelAnimationFrame(raf);
     };
   }, []);
-
-  const suggestions = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    if (!needle) return [];
-    return catalog.filter((entry) => matches(entry, needle)).slice(0, MAX_SUGGESTIONS);
-  }, [catalog, query]);
 
   const goToResults = () => {
     const term = query.trim();

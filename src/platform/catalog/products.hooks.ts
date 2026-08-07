@@ -47,12 +47,13 @@ export function fetchProducts(filters: ProductFilters) {
   return sillageApiFetch<ProductListResult>(`/v1/products?${buildQueryString(filters)}`);
 }
 
-export function useProducts(filters: ProductFilters) {
+export function useProducts(filters: ProductFilters, options: { enabled?: boolean } = {}) {
   const query = useQuery({
     queryKey: PRODUCTS_QUERY_KEY(filters),
     queryFn: () => fetchProducts(filters),
     staleTime: 30_000,
     placeholderData: (prev) => prev,
+    enabled: options.enabled,
   });
   return {
     items: query.data?.items ?? [],

@@ -12,6 +12,7 @@ import {
   type SortKey,
 } from "~/platform/catalog/products.hooks";
 import { useEscapeKey } from "~/sdk/useEscapeKey";
+import { useDebouncedValue } from "~/sdk/useDebouncedValue";
 
 type PriceBucketKey = "under-80" | "80-110" | "110-130" | "130-plus";
 
@@ -194,17 +195,6 @@ function pageWindow(current: number, total: number): (number | null)[] {
   return withGaps;
 }
 
-/** Debounces a value — used so the text search box doesn't fire an API
- * call on every keystroke. */
-function useDebounced<T>(value: T, delayMs: number): T {
-  const [debounced, setDebounced] = useState(value);
-  useEffect(() => {
-    const id = setTimeout(() => setDebounced(value), delayMs);
-    return () => clearTimeout(id);
-  }, [value, delayMs]);
-  return debounced;
-}
-
 function FragrancePage() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
@@ -227,7 +217,7 @@ function FragrancePage() {
     setQuery(search.q ?? "");
   }, [search.q]);
 
-  const debouncedQuery = useDebounced(query, 300);
+  const debouncedQuery = useDebouncedValue(query, 300);
 
   const bucket = PRICE_BUCKETS.find((b) => b.key === priceBucket);
   const baseFilters = {
