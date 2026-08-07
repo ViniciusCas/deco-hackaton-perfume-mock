@@ -126,10 +126,7 @@ function Footer({ cart }: { cart: CartState }) {
         >
           View full bag
         </Link>
-        {/* Checkout (POST /v1/orders on sillage-api) has no frontend flow
-            yet — the map's Destination covers cart/wishlist/address; a real
-            checkout UI is still fog. See .scratch/backend-api/issues/07-frontend-cutover.md. */}
-        <Button type="button" variant="solid" size="md" disabled>
+        <Button href="/checkout" variant="solid" size="md">
           Begin checkout
         </Button>
       </div>

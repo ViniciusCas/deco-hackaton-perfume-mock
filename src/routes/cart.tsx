@@ -236,9 +236,7 @@ function CartPage() {
             </div>
             <p className="mb-6 text-xs text-muted">Taxes and fees calculated at checkout.</p>
 
-            {/* Checkout (POST /v1/orders on sillage-api) has no frontend flow
-                yet — still fog, see .scratch/backend-api/issues/07-frontend-cutover.md. */}
-            <Button type="button" variant="solid" size="md" disabled className="w-full">
+            <Button href="/checkout" variant="solid" size="md" className="w-full">
               Checkout
             </Button>
 

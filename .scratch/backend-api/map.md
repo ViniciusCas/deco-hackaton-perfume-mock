@@ -94,14 +94,11 @@ accessed from a second Worker via its own Hyperdrive binding and its own
   of the four domains need it yet.
 - [Scaffold the sillage-api repository](issues/05-scaffold-sillage-api.md) —
   `sillage-api` created at `~/dev/hackaton-deco/sillage-api` (Hono, committed
-  as `c25a2b5`, not yet pushed/deployed), reusing the website's existing
-  Hyperdrive config via a second binding. `/v1/cart`, `/v1/wishlist`,
-  `/v1/addresses`, `/v1/orders` implemented (not left as stubs) against
-  tickets 02/03's exact contract, plus bearer-token middleware and CORS.
-  Website repo's `src/db/auth.ts` now enables Better Auth's bearer plugin.
-  Both repos typecheck clean; `sillage-api` verified with `wrangler deploy --dry-run`
-  only — nothing deployed live, nothing on the frontend calls it yet.
-
+  as `c25a2b5`), reusing the website's existing Hyperdrive config via a
+  second binding. `/v1/cart`, `/v1/wishlist`, `/v1/addresses`, `/v1/orders`
+  implemented (not left as stubs) against tickets 02/03's exact contract,
+  plus bearer-token middleware and CORS. Website repo's `src/db/auth.ts` now
+  enables Better Auth's bearer plugin.
 - [Decide how SSR forwards a token to sillage-api, and fix bearer-token validation](issues/06-ssr-token-forwarding.md) —
   SSR forwards the browser's own already-signed session cookie (via Better
   Auth's `getSessionCookie` helper) verbatim as the bearer token — no new
@@ -112,11 +109,31 @@ accessed from a second Worker via its own Hyperdrive binding and its own
 - [Cut the frontend over to sillage-api](issues/07-frontend-cutover.md) —
   `src/platform/{cart,wishlist,address}` now call `sillage-api` directly
   (`sillageApiFetch`, new shared client) instead of Shopify/`invoke.site.*`;
-  a new `src/platform/orders` module adds checkout (`useCheckout`) with no
-  consuming UI yet. Bearer token captured from Better Auth's `set-auth-token`
-  header into `localStorage` on sign-in/sign-up. Root route's SSR cart
-  prefetch removed entirely — see fog below. Both repos typecheck clean;
-  not exercised against a live `sillage-api` (still undeployed).
+  a new `src/platform/orders` module adds checkout (`useCheckout`). Bearer
+  token captured from Better Auth's `set-auth-token` header into
+  `localStorage` on sign-in/sign-up. Root route's SSR cart prefetch removed
+  entirely — see fog below.
+- **Both repos deployed and verified live** (not part of any single ticket —
+  deploy + smoke test, done directly): `sillage-api` at
+  `https://sillage-api.sillage-hackaton.workers.dev` (Version `845679dc`),
+  website redeployed at `https://sillage.sillage-hackaton.workers.dev`
+  (Version `74f985af`) with the cutover code. No browser was available in
+  this session, so verification was direct HTTP calls reproducing exactly
+  what the hooks send: cart (add → get → update quantity → remove, subtotal
+  recalculates correctly), wishlist (add → get → remove), and address
+  (create two, set-default correctly flips the single-default invariant,
+  delete both) — all confirmed against production RDS via a throwaway test
+  user, cleaned up afterward. CORS confirmed working for the live website's
+  exact origin.
+- [Build the checkout UI](issues/08-checkout-ui.md) — new `/checkout` route:
+  sign-in required (a deliberate product choice — guest checkout stays
+  unexposed in the UI even though the API supports it), pick a saved address
+  or enter one ad-hoc, inline confirmation built from `POST /v1/orders`'s
+  own response (no `GET /orders/:id` needed). Both "Checkout" buttons now
+  link to it. Typechecks and builds clean; **not yet deployed or verified
+  live** — no browser available to click through the flow, and the
+  live-verification approach used for cart/wishlist/address (direct HTTP
+  calls) wasn't run for checkout as part of this ticket.
 
 ## Not yet specified
 
@@ -135,13 +152,11 @@ accessed from a second Worker via its own Hyperdrive binding and its own
   placeholder data. Not yet a ticket — the likely fix ("just accept the
   post-hydration flash" vs. some other mechanism) doesn't have a forcing
   function yet.
-- A real checkout UI. `useCheckout()` (orders module) exists and is fully
-  wired to `POST /v1/orders`, but nothing calls it — both "Checkout" buttons
-  (cart page, minicart) render permanently disabled. This is real,
-  user-visible unfinished work, not a nice-to-have.
-- Deploying `sillage-api` for real (Cloudflare + pushing the repo to GitHub).
-  The frontend code is now ready and waiting on this — deploying is what
-  would actually let the cutover be exercised/verified end-to-end.
+- Verifying the checkout UI live (deploy the website's latest commit +
+  either a real browser or the same direct-HTTP-call approach used for
+  cart/wishlist/address). Not yet done.
+- Pushing `sillage-api` to GitHub — it's deployed to Cloudflare but the
+  local git repo has no remote yet.
 - Cleaning up the dead legacy wishlist/address cookie-backed code
   (`src/actions/{wishlist,address}/submit.ts`, `src/loaders/wishlist.ts`,
   the wishlist/address halves of `src/loaders/_cookie.ts`, their `setup.ts`
