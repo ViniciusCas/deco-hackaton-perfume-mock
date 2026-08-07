@@ -11,6 +11,7 @@
 // @ts-expect-error -- ambient Cloudflare Workers module, no local types
 import { env } from "cloudflare:workers";
 import { betterAuth } from "better-auth";
+import { bearer } from "better-auth/plugins";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { getRequestUrl } from "@tanstack/react-start/server";
 import { getDb } from "./client";
@@ -59,5 +60,12 @@ export function getAuth() {
     advanced: {
       cookiePrefix: "sillage",
     },
+    // Emits `set-auth-token` on sign-in/sign-up alongside the session
+    // cookie — sillage-api is a separate origin (.scratch/backend-api map),
+    // so it can't read this repo's cookie; the website forwards this token
+    // as `Authorization: Bearer <token>` on calls to sillage-api instead.
+    // sillage-api validates it via a direct `session`-table lookup (its
+    // src/middleware/auth.ts), not by running Better Auth itself.
+    plugins: [bearer()],
   });
 }

@@ -1,7 +1,7 @@
 # Cut over cart/account/wishlist off the Shopify plumbing
 
 Type: task
-Status: open
+Status: closed (superseded — out of scope)
 Blocked by: 01, 02, 04
 
 ## Question
@@ -10,4 +10,13 @@ Replace `src/platform/cart/cart.actions.ts`, `src/platform/user/user.actions.ts`
 
 ## Answer
 
-_(pending)_
+**Superseded — closed out of scope, not resolved on this map.** A sibling
+map, [A real HTTP backend API for the storefront](../../backend-api/map.md),
+charted after this ticket sat open, decided in
+[its first ticket](../../backend-api/issues/01-relationship-to-server-fn.md)
+that cart/wishlist/address (plus orders) get built directly as real HTTP
+routes (`/api/*`) backed by Postgres, replacing `createServerFn` as the
+storefront's backend rather than adding it as an intermediate step. That
+supersedes this ticket's job entirely — the same wiring happens, just as HTTP
+route handlers instead of `createServerFn` actions. See that map's Decisions
+so far for the actual work as it lands.

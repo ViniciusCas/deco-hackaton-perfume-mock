@@ -33,4 +33,7 @@ The perfume storefront's data — catalog (products) and the storefront operatio
 
 ## Out of scope
 
-_(none yet)_
+- [Cut over cart/account/wishlist off the Shopify plumbing](issues/07-cutover-commerce.md) —
+  superseded by [A real HTTP backend API for the storefront](../backend-api/map.md),
+  which does the same cart/wishlist/address/orders wiring directly as HTTP
+  routes instead of `createServerFn`. Closed rather than resolved here.
