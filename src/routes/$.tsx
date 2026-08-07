@@ -3,25 +3,45 @@ import { createFileRoute } from "@tanstack/react-router";
 import Button from "~/components/ui/Button";
 import ProductTile from "~/components/home/ProductTile";
 import ProductHeroImage from "~/components/home/ProductHeroImage";
-import { type CatalogEntry, getCatalogServerFn, getProductBySlugServerFn } from "~/platform/catalog";
+import {
+  type CatalogEntry,
+  type ProductVariant,
+  getCatalogServerFn,
+  getProductBySlugServerFn,
+  getProductVariantsBySlugServerFn,
+} from "~/platform/catalog";
+import { useAddToCart } from "~/platform/cart";
 
 export const Route = createFileRoute("/$")({
   component: CatchAllPage,
   loader: async ({ params }) => {
     const slug = (params._splat ?? "").split("/").filter(Boolean).pop() ?? "";
-    const [entry, catalog] = await Promise.all([
+    const [entry, catalog, variants] = await Promise.all([
       getProductBySlugServerFn({ data: slug }),
       getCatalogServerFn(),
+      getProductVariantsBySlugServerFn({ data: slug }),
     ]);
-    return { slug, entry, catalog };
+    return { slug, entry, catalog, variants };
   },
 });
 
-const SIZES = ["30 ml", "50 ml", "100 ml"];
-
-function ProductPage({ slug, entry, catalog }: { slug: string; entry: CatalogEntry; catalog: CatalogEntry[] }) {
-  const [size, setSize] = useState(SIZES[1]);
+function ProductPage({
+  slug,
+  entry,
+  catalog,
+  variants,
+}: {
+  slug: string;
+  entry: CatalogEntry;
+  catalog: CatalogEntry[];
+  variants: ProductVariant[];
+}) {
+  const [selectedVariantId, setSelectedVariantId] = useState(
+    variants.find((v) => v.stock > 0)?.id ?? variants[0]?.id,
+  );
+  const selectedVariant = variants.find((v) => v.id === selectedVariantId);
   const related = catalog.filter((c) => c.slug !== slug).slice(0, 4);
+  const addToCart = useAddToCart();
 
   return (
     <div className="pt-[90px] sm:pt-[110px]">
@@ -38,35 +58,56 @@ function ProductPage({ slug, entry, catalog }: { slug: string; entry: CatalogEnt
           <p className="mt-3 text-sm text-muted">{entry.notes}</p>
           <div className="mt-4 font-display text-2xl text-ink">${entry.price}</div>
 
-          <div className="mt-7">
-            <div className="mb-2.5 font-display text-2xs font-medium tracking-(--tracking-label) text-ink uppercase">
-              Size
+          {variants.length > 0 && (
+            <div className="mt-7">
+              <div className="mb-2.5 font-display text-2xs font-medium tracking-(--tracking-label) text-ink uppercase">
+                Size
+              </div>
+              <div className="flex gap-2">
+                {variants.map((v) => (
+                  <button
+                    key={v.id}
+                    type="button"
+                    disabled={v.stock === 0}
+                    onClick={() => setSelectedVariantId(v.id)}
+                    className={`rounded-sm border px-4 py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-40 ${
+                      v.id === selectedVariantId
+                        ? "border-rose bg-rose text-black"
+                        : "border-line-strong text-ink"
+                    }`}
+                  >
+                    {v.size}
+                  </button>
+                ))}
+              </div>
             </div>
-            <div className="flex gap-2">
-              {SIZES.map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => setSize(s)}
-                  className={`rounded-sm border px-4 py-2.5 text-sm ${
-                    s === size
-                      ? "border-rose bg-rose text-black"
-                      : "border-line-strong text-ink"
-                  }`}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-          </div>
+          )}
 
           <div className="mt-7 flex flex-col gap-2">
-            <Button type="button" variant="solid" size="md" disabled className="w-full sm:w-auto">
-              Add to bag — demo
+            <Button
+              type="button"
+              variant="solid"
+              size="md"
+              className="w-full sm:w-auto"
+              disabled={!selectedVariant || selectedVariant.stock === 0 || addToCart.isPending}
+              onClick={() =>
+                selectedVariant &&
+                addToCart.mutate({ variantId: selectedVariant.id, quantity: 1 })
+              }
+            >
+              {addToCart.isPending ? (
+                <span className="loading loading-spinner loading-xs" />
+              ) : !selectedVariant || selectedVariant.stock === 0 ? (
+                "Out of stock"
+              ) : addToCart.isSuccess ? (
+                "Added!"
+              ) : (
+                "Add to bag"
+              )}
             </Button>
-            <p className="text-xs text-muted">
-              This catalog is a design demo — nothing here is wired to real checkout.
-            </p>
+            {addToCart.isError && (
+              <p className="text-xs text-error">Couldn't add to bag. Please try again.</p>
+            )}
           </div>
         </div>
       </div>
@@ -102,6 +143,10 @@ function NotFoundPage() {
 }
 
 function CatchAllPage() {
-  const { slug, entry, catalog } = Route.useLoaderData();
-  return entry ? <ProductPage slug={slug} entry={entry} catalog={catalog} /> : <NotFoundPage />;
+  const { slug, entry, catalog, variants } = Route.useLoaderData();
+  return entry ? (
+    <ProductPage slug={slug} entry={entry} catalog={catalog} variants={variants} />
+  ) : (
+    <NotFoundPage />
+  );
 }

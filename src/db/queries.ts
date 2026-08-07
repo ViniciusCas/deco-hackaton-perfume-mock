@@ -6,8 +6,8 @@
  */
 import { and, desc, eq } from "drizzle-orm";
 import { getDb } from "./client";
-import { products, type products as ProductsTable } from "./schema";
-import type { CatalogEntry } from "~/platform/catalog/catalog.types";
+import { productVariants, products, type products as ProductsTable } from "./schema";
+import type { CatalogEntry, ProductVariant } from "~/platform/catalog/catalog.types";
 
 type ProductRow = typeof ProductsTable.$inferSelect;
 
@@ -44,6 +44,27 @@ export async function getProductBySlug(slug: string): Promise<CatalogEntry | nul
     .where(and(eq(products.slug, slug), eq(products.isActive, true)))
     .limit(1);
   return row ? toCatalogEntry(row) : null;
+}
+
+/**
+ * Variants (size/price/stock) for a product by slug — the actual `variantId`
+ * needed to call sillage-api's POST /v1/cart/items. Not part of CatalogEntry
+ * (list views never needed it before the cart cutover); PDP-only.
+ */
+export async function getProductVariantsBySlug(slug: string): Promise<ProductVariant[]> {
+  const db = getDb();
+  const rows = await db
+    .select({
+      id: productVariants.id,
+      size: productVariants.size,
+      price: productVariants.price,
+      stock: productVariants.stock,
+    })
+    .from(productVariants)
+    .innerJoin(products, eq(productVariants.productId, products.id))
+    .where(and(eq(products.slug, slug), eq(products.isActive, true)));
+
+  return rows.map((r) => ({ id: r.id, size: r.size, price: Number(r.price), stock: r.stock }));
 }
 
 /**

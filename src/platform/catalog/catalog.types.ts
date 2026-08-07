@@ -10,3 +10,10 @@ export interface CatalogEntry {
   image: string;
   tag?: "New" | "Limited";
 }
+
+export interface ProductVariant {
+  id: string;
+  size: string;
+  price: number;
+  stock: number;
+}

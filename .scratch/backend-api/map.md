@@ -154,7 +154,28 @@ accessed from a second Worker via its own Hyperdrive binding and its own
   per-request isolation on the server) found while investigating what
   turned out to be a false-alarm data-leak report — see the ticket for the
   full corrected account. Verified end-to-end locally (Docker Postgres +
-  both dev servers); **not yet deployed**.
+  both dev servers), then committed (`47c9db7`) and deployed (Version
+  `bf167b06`). All key routes smoke-tested 200 on production.
+- **Fixed: "Add to bag" did nothing on the real product page.** Found by
+  the user actually clicking through the live site — the first real-browser
+  test of this whole effort, and it immediately caught what curl-based
+  verification structurally couldn't. Root cause: `src/routes/$.tsx` (the
+  actual `/{slug}` catch-all serving real catalog products) had a
+  **hardcoded, permanently-`disabled` "Add to bag — demo" button**, wired to
+  nothing — leftover from the sillage-redesign pass, which explicitly scoped
+  cart wiring out. The component that *was* correctly wired to
+  `useAddToCart` (`ProductActions.tsx`) is only used by a Deco CMS section
+  (`sections/Product/ProductDetails.tsx`), not the real product route.
+  Separately, `CatalogEntry` (the type `$.tsx` receives) never exposed a
+  variant id at all — list views never needed it before checkout existed —
+  so there was no way to wire a real "Add to bag" button even if someone
+  had tried. Fixed: new `getProductVariantsBySlugServerFn`
+  (`src/db/queries.ts`'s `getProductVariantsBySlug`, `src/platform/catalog/`)
+  fetches real `productVariants` rows (id/size/price/stock) for a product;
+  `$.tsx`'s size selector now reflects real variants (out-of-stock sizes
+  disabled) and its "Add to bag" button calls `useAddToCart` for real, with
+  pending/success/error states. Verified locally: real button renders (not
+  disabled), real size options render with real variant ids.
 
 ## Not yet specified
 
@@ -164,8 +185,6 @@ accessed from a second Worker via its own Hyperdrive binding and its own
   known website, revisit if/when a real external consumer (mobile app,
   partner) is scoped in. (CORS, previously grouped with this, is no longer
   deferred — see ticket 01's amendment.)
-- Deploying the guest-cart-SSR fix (ticket 09) — implemented and verified
-  locally, not yet deployed.
 - Cleaning up the dead legacy wishlist/address cookie-backed code
   (`src/actions/{wishlist,address}/submit.ts`, `src/loaders/wishlist.ts`,
   the wishlist/address halves of `src/loaders/_cookie.ts`, their `setup.ts`
