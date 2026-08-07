@@ -267,8 +267,8 @@ function FragrancePage() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 pt-[90px] pb-14 sm:px-8 sm:pt-[110px]">
-      <div className="mb-6 sm:mb-8">
-        <div className={`${LABEL_CLASS} mb-3 text-accent`}>Full collection</div>
+      <div className="mt-4 mb-6 sm:mt-6 sm:mb-8">
+        <div className={`${LABEL_CLASS} mb-3 text-ink`}>Full collection</div>
         <h1 className="font-display text-4xl font-light text-ink sm:text-5xl">Fragrance</h1>
         <p className="mt-3 max-w-xl text-sm text-muted sm:text-base">
           {query.trim()
@@ -435,18 +435,24 @@ function FragrancePage() {
         </div>
       )}
 
-      {filterOpen && (
-        <div className="fixed inset-0 z-50 flex justify-end">
-          <button
-            type="button"
-            aria-label="Close filters"
-            onClick={() => setFilterOpen(false)}
-            className="absolute inset-0 bg-black/40"
-          />
-          <aside
-            className="glass-strong relative grid h-full w-full max-w-sm grid-rows-[auto_1fr_auto] divide-y divide-ink-soft/10"
-            aria-label="Filters"
-          >
+      <div
+        className={`fixed inset-0 z-[60] flex justify-end ${filterOpen ? "" : "pointer-events-none"}`}
+      >
+        <button
+          type="button"
+          aria-label="Close filters"
+          tabIndex={filterOpen ? 0 : -1}
+          onClick={() => setFilterOpen(false)}
+          className={`absolute inset-0 bg-black/40 transition-opacity duration-200 ${
+            filterOpen ? "opacity-100" : "pointer-events-none opacity-0"
+          }`}
+        />
+        <aside
+          className={`relative grid h-full w-full max-w-sm grid-rows-[auto_1fr_auto] divide-y divide-ink-soft/10 bg-surface shadow-xl transition-transform duration-300 ease-out ${
+            filterOpen ? "translate-x-0" : "translate-x-full"
+          }`}
+          aria-label="Filters"
+        >
             <div className="flex items-center justify-between px-5 py-3.5">
               <span className="font-display text-lg font-normal text-ink">Filters</span>
               <button
@@ -531,7 +537,6 @@ function FragrancePage() {
             </div>
           </aside>
         </div>
-      )}
     </div>
   );
 }

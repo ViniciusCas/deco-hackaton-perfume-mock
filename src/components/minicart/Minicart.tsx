@@ -104,6 +104,11 @@ function EmptyState() {
   );
 }
 
+function closeMinicart() {
+  const toggle = document.getElementById(MINICART_DRAWER_ID) as HTMLInputElement | null;
+  if (toggle) toggle.checked = false;
+}
+
 function Footer({ cart }: { cart: CartState }) {
   return (
     <footer className="w-full border-t border-line">
@@ -120,11 +125,12 @@ function Footer({ cart }: { cart: CartState }) {
         <Link
           to="/cart"
           preload="intent"
+          onClick={closeMinicart}
           className="tap-scale flex h-10 items-center justify-center rounded-sm border border-line-strong font-display text-2xs font-medium tracking-(--tracking-label) text-ink uppercase"
         >
           View full bag
         </Link>
-        <Button href="/checkout" variant="solid" size="md">
+        <Button href="/checkout" variant="solid" size="md" onClick={closeMinicart}>
           Begin checkout
         </Button>
       </div>

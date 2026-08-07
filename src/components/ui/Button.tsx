@@ -32,6 +32,7 @@ type AsLink = CommonProps & {
   href: string;
   prefetch?: "intent" | false;
   disabled?: undefined;
+  onClick?: () => void;
 };
 
 export type Props = AsButton | AsLink;
@@ -53,7 +54,12 @@ export default function Button(props: Props) {
 
   if ("href" in props && props.href) {
     return (
-      <Link to={props.href} preload={props.prefetch ?? "intent"} className={classes}>
+      <Link
+        to={props.href}
+        preload={props.prefetch ?? "intent"}
+        onClick={props.onClick}
+        className={classes}
+      >
         {children}
       </Link>
     );

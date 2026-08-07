@@ -22,7 +22,7 @@ export default function SearchOverlay({ searchbar }: { searchbar: SearchbarProps
 
       <div
         role="search"
-        className="grid grid-rows-[0fr] overflow-hidden bg-surface transition-[grid-template-rows] duration-(--duration-slow) ease-(--ease-out-soft) peer-checked/search:grid-rows-[1fr]"
+        className="relative z-50 grid grid-rows-[0fr] overflow-hidden bg-surface transition-[grid-template-rows] duration-(--duration-slow) ease-(--ease-out-soft) peer-checked/search:grid-rows-[1fr]"
       >
         <div className="min-h-0 overflow-hidden border-t border-line">
           <div className="mx-auto flex max-w-2xl items-start">
@@ -40,10 +40,18 @@ export default function SearchOverlay({ searchbar }: { searchbar: SearchbarProps
         </div>
       </div>
 
+      {/* Vignette backdrop, not a flat tint — darker toward the edges/bottom,
+          clear near the top where the search panel (z-50, above this z-40
+          layer) already lives, so products lower on the page stay readable
+          rather than the whole viewport going uniformly dark. */}
       <label
         htmlFor={SEARCH_OVERLAY_ID}
         aria-label="Close search"
-        className="fixed inset-0 z-40 bg-black/40 opacity-0 pointer-events-none transition-opacity duration-200 peer-checked/search:opacity-100 peer-checked/search:pointer-events-auto"
+        style={{
+          background:
+            "radial-gradient(ellipse 120% 60% at 50% 0%, rgba(2,1,34,0.12) 0%, rgba(2,1,34,0.55) 100%)",
+        }}
+        className="fixed inset-0 z-40 opacity-0 pointer-events-none transition-opacity duration-200 peer-checked/search:opacity-100 peer-checked/search:pointer-events-auto"
       />
     </>
   );

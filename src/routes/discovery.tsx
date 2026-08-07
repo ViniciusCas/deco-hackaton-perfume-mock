@@ -119,9 +119,9 @@ function DiscoveryPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 pt-[90px] pb-10 sm:px-8 sm:pt-[110px] sm:pb-14">
-      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div className="mt-4 mb-8 flex flex-col gap-4 sm:mt-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <div className={`${LABEL_CLASS} mb-3 text-accent`}>Discovery sets</div>
+          <div className={`${LABEL_CLASS} mb-3 text-ink`}>Discovery sets</div>
           <h1 className="font-display text-4xl font-light text-ink sm:text-5xl">
             Build a set of three
           </h1>
