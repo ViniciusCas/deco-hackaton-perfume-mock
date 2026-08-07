@@ -248,11 +248,41 @@ accessed from a second Worker via its own Hyperdrive binding and its own
   that crashed `/fragrance` doesn't apply here. Deployed (Version
   `be2834f9`), all key routes smoke-tested 200. Not yet clicked through in
   a real browser.
-  [Migrate PDP/home-collections and remove the old catalog surface](issues/14-catalog-cutover-remaining.md)
-  is the last open ticket in this batch.
+- [Migrate PDP/home-collections and remove the old catalog surface](issues/14-catalog-cutover-remaining.md) —
+  **could not fully delete the old catalog surface as originally scoped**:
+  `discovery.tsx`'s local keyword-scoring mock genuinely needs the full
+  unpaginated catalog client-side, and the user explicitly said not to
+  touch that route in this pass. `getCatalogServerFn`/`getCatalogEntries`
+  survive, trimmed to exactly that one consumer; everything else (PDP
+  detail/variants/related, home-collections, wishlist's product
+  cross-reference) is now on `sillage-api`. New `GET /v1/products?ids=...`
+  batch endpoint added for wishlist (was fetching the whole catalog to
+  show a handful of items). `$.tsx`/`index.tsx` both gained real SSR
+  loaders using the `ensureQueryData` + per-call `.catch(() => {})`
+  pattern ticket 12's postmortem established as required. Verified via
+  `wrangler dev --remote` against the real built artifact (no exceptions
+  in the server log across all 7 pre-deploy routes), then deployed
+  (Version `f3e02650`) and smoke-tested 200 across 8 live routes. Carries
+  the same known, already-user-confirmed-safe SSR-flash pattern from
+  ticket 12 onto `/` and the PDP — expected to self-correct via hydration
+  but not independently re-verified in a browser for these two specific
+  pages.
+
+This closes out the catalog-migration effort — all four implementation
+tickets (11–14) are resolved. `discovery.tsx` staying on the old
+`createServerFn` path is a deliberate, explicit exception, not an
+oversight — see fog below.
 
 ## Not yet specified
 
+- Whether/when `discovery.tsx` moves off the old catalog `createServerFn`
+  surface too — deliberately deferred per explicit user instruction during
+  [ticket 14](issues/14-catalog-cutover-remaining.md), not forgotten. It
+  needs the *entire* unpaginated catalog for its local keyword-scoring
+  mock, which doesn't fit `/v1/products`' pagination model as-is; revisit
+  if/when Discovery gets real backend logic (already out of scope on the
+  sillage-redesign map) or a "give me everything" catalog endpoint is
+  otherwise justified.
 - OpenAPI/schema documentation for the new routes — not sharp until the
   endpoint surface itself is designed.
 - Rate limiting on `sillage-api` — not urgent while the only consumer is the

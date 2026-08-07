@@ -108,4 +108,6 @@ mechanism, same `.catch()` safety net) — but this specific claim for `/`
 and the PDP was **not independently re-verified in a browser** as part of
 this ticket. Worth a spot-check.
 
-Deployed: website Version _(pending — see below)_.
+Deployed: website Version `f3e02650`. All eight key routes (`/`, a real
+PDP slug, `/fragrance`, `/discovery`, `/wishlist`, `/account`, `/cart`,
+`/checkout`) smoke-tested 200 on the live production URL.
