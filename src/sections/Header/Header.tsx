@@ -11,6 +11,7 @@ import { type SearchbarProps } from "../../components/search/Searchbar/Form";
 import Drawer from "../../components/ui/Drawer";
 import Icon from "../../components/ui/Icon";
 import Image from "../../components/ui/Image";
+import Logo from "../../components/ui/Logo";
 import { SEARCH_OVERLAY_ID, SIDEMENU_CONTAINER_ID, SIDEMENU_DRAWER_ID } from "../../constants";
 import { useDevice } from "@decocms/blocks/sdk/useDevice";
 import { type LoadingFallbackProps } from "~/types/deco";
@@ -80,7 +81,12 @@ function Wordmark({
     );
   }
   if (!siteName) return null;
-  return <span className={className}>{siteName}</span>;
+  return (
+    <span className={`inline-flex items-center gap-[0.3em] ${className}`}>
+      <Logo className="h-[0.85em] w-[0.85em] shrink-0" />
+      {siteName}
+    </span>
+  );
 }
 
 const Desktop = ({ navItems, logo, siteName }: Props) => (

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { type ImageWidget } from "~/types/widgets";
 import Image from "~/components/ui/Image";
 import Button from "~/components/ui/Button";
+import Logo from "~/components/ui/Logo";
 import Section from "../../components/ui/Section";
 
 /** @titleBy title */
@@ -43,7 +44,8 @@ function Newsletter({ siteName, note }: { siteName?: string; note?: string }) {
   return (
     <div className="flex flex-col gap-4 sm:max-w-xs">
       {siteName && (
-        <span className="font-display text-lg text-ink uppercase tracking-(--tracking-label)">
+        <span className="inline-flex items-center gap-[0.3em] font-display text-lg text-ink uppercase tracking-(--tracking-label)">
+          <Logo className="h-[0.85em] w-[0.85em] shrink-0" />
           {siteName}
         </span>
       )}
