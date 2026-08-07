@@ -3,6 +3,7 @@ import { getRequest, setResponseHeader } from "@tanstack/react-start/server";
 import { APIError } from "better-auth/api";
 import { getAuth } from "~/db/auth";
 import type { Person } from "./user.types";
+import { validateEmail, validatePassword } from "./user.validation";
 
 interface AuthUser {
   id: string;
@@ -69,6 +70,11 @@ export const signUpServerFn = createServerFn({ method: "POST" })
     (input: { email: string; password: string; firstName?: string; lastName?: string }) => input,
   )
   .handler(async (ctx): Promise<Person | null> => {
+    const emailError = validateEmail(ctx.data.email);
+    if (emailError) throw new Error(emailError);
+    const passwordError = validatePassword(ctx.data.password);
+    if (passwordError) throw new Error(passwordError);
+
     const auth = getAuth();
     const name =
       [ctx.data.firstName, ctx.data.lastName].filter(Boolean).join(" ").trim() || ctx.data.email;

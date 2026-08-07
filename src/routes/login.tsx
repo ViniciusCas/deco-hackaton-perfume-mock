@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useSignIn, useSignUp, useUser } from "../platform/user";
+import { useSignIn, useSignUp, useUser, validateEmail, validatePassword } from "../platform/user";
 import Button from "../components/ui/Button";
 import { clx } from "~/sdk/clx";
 
@@ -21,6 +21,7 @@ function LoginPage() {
 
   const signIn = useSignIn();
   const signUp = useSignUp();
+  const [signUpValidationError, setSignUpValidationError] = useState<string | null>(null);
 
   if (isAuthenticated) {
     return (
@@ -51,10 +52,20 @@ function LoginPage() {
   const onSignUp = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const data = new FormData(e.currentTarget);
+    const email = `${data.get("email") ?? ""}`.trim();
+    const password = `${data.get("password") ?? ""}`;
+
+    const validationError = validateEmail(email) ?? validatePassword(password);
+    if (validationError) {
+      setSignUpValidationError(validationError);
+      return;
+    }
+    setSignUpValidationError(null);
+
     signUp.mutate(
       {
-        email: `${data.get("email") ?? ""}`.trim(),
-        password: `${data.get("password") ?? ""}`,
+        email,
+        password,
         firstName: `${data.get("firstName") ?? ""}`.trim() || undefined,
         lastName: `${data.get("lastName") ?? ""}`.trim() || undefined,
       },
@@ -208,14 +219,19 @@ function LoginPage() {
                   autoComplete="new-password"
                   className={INPUT_CLASS}
                   disabled={signUp.isPending}
+                  onChange={() => setSignUpValidationError(null)}
                 />
+                <p className="text-xs text-muted">
+                  8+ characters, with uppercase, lowercase, a number and a special character.
+                </p>
               </label>
 
-              {signUp.isError && (
+              {(signUpValidationError || signUp.isError) && (
                 <p className="text-sm text-error">
-                  {signUp.error instanceof Error
-                    ? signUp.error.message
-                    : "Could not create account."}
+                  {signUpValidationError ??
+                    (signUp.error instanceof Error
+                      ? signUp.error.message
+                      : "Could not create account.")}
                 </p>
               )}
 
