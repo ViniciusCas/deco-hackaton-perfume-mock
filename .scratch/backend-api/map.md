@@ -240,9 +240,16 @@ accessed from a second Worker via its own Hyperdrive binding and its own
   fully — count corrects, tiles render, facet counts are real, filtering
   and pagination work. Cosmetic first-paint-only gap, not a functional one;
   root cause not chased further.
-  [Move header search to debounced API calls](issues/13-header-search-api.md)
-  and [Migrate PDP/home-collections and remove the old catalog surface](issues/14-catalog-cutover-remaining.md)
-  are still open.
+- [Move header search to debounced API calls](issues/13-header-search-api.md) —
+  `Searchbar/Form.tsx` no longer filters a client-cached catalog array;
+  suggestions come from `useProducts({ search, limit: 6 })`, debounced
+  300ms (new shared `src/sdk/useDebouncedValue.ts`, extracted from ticket
+  12's local copy). No SSR loader on this component, so the class of bug
+  that crashed `/fragrance` doesn't apply here. Deployed (Version
+  `be2834f9`), all key routes smoke-tested 200. Not yet clicked through in
+  a real browser.
+  [Migrate PDP/home-collections and remove the old catalog surface](issues/14-catalog-cutover-remaining.md)
+  is the last open ticket in this batch.
 
 ## Not yet specified
 
