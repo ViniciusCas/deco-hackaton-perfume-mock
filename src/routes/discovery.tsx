@@ -1,7 +1,8 @@
 import { useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import Button from "~/components/ui/Button";
-import { type CatalogEntry, getCatalogServerFn } from "~/platform/catalog";
+import type { CatalogEntry } from "~/platform/catalog";
+import { getCatalogServerFn } from "~/platform/catalog/catalog.actions";
 
 export const Route = createFileRoute("/discovery")({
   component: DiscoveryPage,

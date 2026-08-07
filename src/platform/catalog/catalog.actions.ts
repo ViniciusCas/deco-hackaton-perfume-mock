@@ -1,23 +1,14 @@
 import { createServerFn } from "@tanstack/react-start";
-import {
-  getCatalogEntries,
-  getHomeCollections,
-  getProductBySlug,
-  getProductVariantsBySlug,
-} from "~/db/queries";
+import { getCatalogEntries } from "~/db/queries";
 
+/**
+ * Kept only for discovery.tsx's local keyword-scoring mock, which needs the
+ * full catalog client-side and was explicitly deferred from the
+ * sillage-api catalog migration — see
+ * .scratch/backend-api/issues/14-catalog-cutover-remaining.md. Every other
+ * catalog consumer now goes through src/platform/catalog/products.hooks.ts
+ * (sillage-api) instead.
+ */
 export const getCatalogServerFn = createServerFn({ method: "GET" }).handler(() =>
   getCatalogEntries(),
 );
-
-export const getHomeCollectionsServerFn = createServerFn({ method: "GET" }).handler(() =>
-  getHomeCollections(),
-);
-
-export const getProductBySlugServerFn = createServerFn({ method: "GET" })
-  .inputValidator((slug: string) => slug)
-  .handler(({ data: slug }) => getProductBySlug(slug));
-
-export const getProductVariantsBySlugServerFn = createServerFn({ method: "GET" })
-  .inputValidator((slug: string) => slug)
-  .handler(({ data: slug }) => getProductVariantsBySlug(slug));

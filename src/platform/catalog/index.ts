@@ -1,8 +1,5 @@
 export type { CatalogEntry, ProductVariant } from "./catalog.types";
-export { CATALOG_QUERY_KEY, useCatalog } from "./catalog.hooks";
-export {
-  getCatalogServerFn,
-  getHomeCollectionsServerFn,
-  getProductBySlugServerFn,
-  getProductVariantsBySlugServerFn,
-} from "./catalog.actions";
+// getCatalogServerFn is discovery.tsx's own direct import from
+// ./catalog.actions, not re-exported here — every other catalog consumer
+// goes through ./products.hooks (sillage-api) instead. See
+// .scratch/backend-api/issues/14-catalog-cutover-remaining.md.

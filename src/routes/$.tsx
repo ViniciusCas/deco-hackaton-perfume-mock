@@ -4,46 +4,67 @@ import Button from "~/components/ui/Button";
 import IconButton from "~/components/ui/IconButton";
 import ProductTile from "~/components/home/ProductTile";
 import ProductHeroImage from "~/components/home/ProductHeroImage";
+import type { CatalogEntry, ProductVariant } from "~/platform/catalog";
 import {
-  type CatalogEntry,
-  type ProductVariant,
-  getCatalogServerFn,
-  getProductBySlugServerFn,
-  getProductVariantsBySlugServerFn,
-} from "~/platform/catalog";
+  fetchProductDetail,
+  fetchProductVariants,
+  fetchRelatedProducts,
+  PRODUCT_DETAIL_QUERY_KEY,
+  PRODUCT_VARIANTS_QUERY_KEY,
+  RELATED_PRODUCTS_QUERY_KEY,
+  useProductDetail,
+  useProductVariants,
+  useRelatedProducts,
+} from "~/platform/catalog/products.hooks";
 import { useAddToCart } from "~/platform/cart";
 import { useToggleWishlist, useWishlist } from "~/platform/wishlist";
 import { useUser } from "~/platform/user";
 
+const RELATED_LIMIT = 4;
+
 export const Route = createFileRoute("/$")({
   component: CatchAllPage,
-  loader: async ({ params }) => {
+  loader: async ({ context, params }) => {
     const slug = (params._splat ?? "").split("/").filter(Boolean).pop() ?? "";
-    const [entry, catalog, variants] = await Promise.all([
-      getProductBySlugServerFn({ data: slug }),
-      getCatalogServerFn(),
-      getProductVariantsBySlugServerFn({ data: slug }),
+    // SSR prefetch, same reasoning/pattern as fragrance.tsx's loader (see
+    // products.hooks.ts's comment above these fetch fns): individual
+    // `.catch(() => {})` per call, not one around Promise.all, so a
+    // transient failure degrades to the client-side fetch instead of
+    // crashing the whole route.
+    await Promise.all([
+      context.queryClient
+        .ensureQueryData({
+          queryKey: PRODUCT_DETAIL_QUERY_KEY(slug),
+          queryFn: () => fetchProductDetail(slug),
+        })
+        .catch(() => {}),
+      context.queryClient
+        .ensureQueryData({
+          queryKey: PRODUCT_VARIANTS_QUERY_KEY(slug),
+          queryFn: () => fetchProductVariants(slug),
+        })
+        .catch(() => {}),
+      context.queryClient
+        .ensureQueryData({
+          queryKey: RELATED_PRODUCTS_QUERY_KEY(slug, RELATED_LIMIT),
+          queryFn: () => fetchRelatedProducts(slug, RELATED_LIMIT),
+        })
+        .catch(() => {}),
     ]);
-    return { slug, entry, catalog, variants };
   },
 });
 
-function ProductPage({
-  slug,
-  entry,
-  catalog,
-  variants,
-}: {
-  slug: string;
+function ProductPage({ entry, variants, related }: {
   entry: CatalogEntry;
-  catalog: CatalogEntry[];
   variants: ProductVariant[];
+  related: CatalogEntry[];
 }) {
-  const [selectedVariantId, setSelectedVariantId] = useState(
-    variants.find((v) => v.stock > 0)?.id ?? variants[0]?.id,
-  );
-  const selectedVariant = variants.find((v) => v.id === selectedVariantId);
-  const related = catalog.filter((c) => c.slug !== slug).slice(0, 4);
+  const [selectedVariantId, setSelectedVariantId] = useState<string | undefined>(undefined);
+  // `variants` arrives async (its own query) after `entry` — pick a default
+  // once it's actually loaded rather than at first render, when it's still [].
+  const effectiveVariantId =
+    selectedVariantId ?? variants.find((v) => v.stock > 0)?.id ?? variants[0]?.id;
+  const selectedVariant = variants.find((v) => v.id === effectiveVariantId);
   const addToCart = useAddToCart();
   const { isInWishlist } = useWishlist();
   const toggleWishlist = useToggleWishlist();
@@ -81,7 +102,7 @@ function ProductPage({
                     disabled={v.stock === 0}
                     onClick={() => setSelectedVariantId(v.id)}
                     className={`rounded-sm border px-4 py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-40 ${
-                      v.id === selectedVariantId
+                      v.id === effectiveVariantId
                         ? "border-rose bg-rose text-black"
                         : "border-line-strong text-ink"
                     }`}
@@ -198,9 +219,23 @@ function NotFoundPage() {
 }
 
 function CatchAllPage() {
-  const { slug, entry, catalog, variants } = Route.useLoaderData();
+  const { _splat } = Route.useParams();
+  const slug = (_splat ?? "").split("/").filter(Boolean).pop() ?? "";
+
+  const { entry, isLoading: entryLoading } = useProductDetail(slug);
+  const { variants } = useProductVariants(slug);
+  const { items: related } = useRelatedProducts(slug, RELATED_LIMIT);
+
+  if (entryLoading) {
+    return (
+      <div className="flex min-h-[70vh] items-center justify-center pt-[90px] sm:pt-[110px]">
+        <span className="loading loading-spinner loading-lg" />
+      </div>
+    );
+  }
+
   return entry ? (
-    <ProductPage slug={slug} entry={entry} catalog={catalog} variants={variants} />
+    <ProductPage entry={entry} variants={variants} related={related} />
   ) : (
     <NotFoundPage />
   );

@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useUser } from "~/platform/user";
 import { useWishlist } from "~/platform/wishlist";
-import { useCatalog } from "~/platform/catalog";
+import { useProductsByIds } from "~/platform/catalog/products.hooks";
 import ProductTile from "~/components/home/ProductTile";
 import Button from "~/components/ui/Button";
 
@@ -12,7 +12,7 @@ export const Route = createFileRoute("/wishlist")({
 function WishlistPage() {
   const { isAuthenticated, isLoading: userLoading } = useUser();
   const { wishlist, isLoading: wishlistLoading } = useWishlist();
-  const { catalog, isLoading: catalogLoading } = useCatalog();
+  const { items, isLoading: itemsLoading } = useProductsByIds(wishlist.productIds);
 
   if (userLoading) {
     return (
@@ -36,8 +36,7 @@ function WishlistPage() {
     );
   }
 
-  const items = catalog.filter((entry) => wishlist.productIds.includes(entry.id));
-  const isLoading = wishlistLoading || catalogLoading;
+  const isLoading = wishlistLoading || itemsLoading;
 
   return (
     <div className="mx-auto max-w-6xl px-4 pt-[90px] pb-14 sm:px-8 sm:pt-[110px]">

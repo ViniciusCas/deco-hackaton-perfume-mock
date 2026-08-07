@@ -2,12 +2,23 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import Icon, { type AvailableIcons } from "~/components/ui/Icon";
 import Button from "~/components/ui/Button";
 import ProductTile from "~/components/home/ProductTile";
-import { getHomeCollectionsServerFn } from "~/platform/catalog";
+import {
+  fetchHomeCollections,
+  HOME_COLLECTIONS_QUERY_KEY,
+  useHomeCollections,
+} from "~/platform/catalog/products.hooks";
 import { useReveal } from "~/sdk/useReveal";
 
 export const Route = createFileRoute("/")({
   component: HomePage,
-  loader: () => getHomeCollectionsServerFn(),
+  loader: async ({ context }) => {
+    // Same SSR-prefetch pattern as fragrance.tsx/$.tsx — .catch(() => {})
+    // so a transient sillage-api failure degrades to the client-side fetch
+    // instead of crashing the route.
+    await context.queryClient
+      .ensureQueryData({ queryKey: HOME_COLLECTIONS_QUERY_KEY, queryFn: fetchHomeCollections })
+      .catch(() => {});
+  },
 });
 
 const NOTE_CHIPS = ["Floral", "Amber", "Woody", "Citrus", "Musk"];
@@ -19,13 +30,24 @@ const PERKS: { icon: AvailableIcons; label: string }[] = [
 ];
 
 function HomePage() {
-  const { arrivals: ARRIVALS, bestSellers: BEST_SELLERS } = Route.useLoaderData();
+  const { arrivals: ARRIVALS, bestSellers: BEST_SELLERS, isLoading } = useHomeCollections();
 
   const chipsRef = useReveal<HTMLElement>();
   const arrivalsRef = useReveal<HTMLElement>();
   const editorialRef = useReveal<HTMLElement>();
   const bestSellersRef = useReveal<HTMLElement>();
   const quizRef = useReveal<HTMLElement>();
+
+  // First client render (before SSR/prefetch data resolves) has nothing to
+  // show yet — ARRIVALS[0] below is used unconditionally in the hero, so
+  // guard on that rather than letting it throw.
+  if (isLoading || ARRIVALS.length === 0) {
+    return (
+      <div className="flex min-h-[70vh] items-center justify-center pt-[90px] sm:pt-[110px]">
+        <span className="loading loading-spinner loading-lg" />
+      </div>
+    );
+  }
 
   return (
     <div className="pt-[90px] sm:pt-[110px]">
