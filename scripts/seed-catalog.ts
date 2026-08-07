@@ -13,7 +13,7 @@ import { config } from "dotenv";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import raw from "../src/mocks/perfumes.json" with { type: "json" };
-import { products, productVariants } from "../src/db/schema";
+import { products, productVariants, productAccords, productNotes } from "../src/db/schema";
 
 config({ path: ".dev.vars" });
 
@@ -24,6 +24,7 @@ interface RawPerfume {
   release_year: number;
   gender: string;
   accords: string;
+  accords_strength: string;
   notes_top: string;
   notes_middle: string;
   notes_base: string;
@@ -65,6 +66,44 @@ const VARIANT_SIZES = [
   { size: "50 ml", multiplier: 1, stock: 40 },
   { size: "100 ml", multiplier: 1.7, stock: 25 },
 ];
+
+/**
+ * Full accord blend for a product, with real strength percentages —
+ * previously discarded past the first 4 (see .scratch/normalize-notes-moods/map.md).
+ * `accords`/`accords_strength` are parallel semicolon-delimited lists,
+ * same order, same length in every row observed in perfumes.json; a
+ * defensive length-mismatch clamp avoids inserting a name with no
+ * corresponding strength if that ever isn't true.
+ */
+function buildAccordRows(entry: RawPerfume) {
+  const names = splitList(entry.accords);
+  const strengths = splitList(entry.accords_strength).map(Number);
+  const count = Math.min(names.length, strengths.length);
+  return names.slice(0, count).map((name, i) => ({
+    productId: entry.id,
+    name: titleCase(name),
+    strength: strengths[i],
+    sortOrder: i,
+  }));
+}
+
+/** Full top/middle/base note breakdown — previously collapsed to one note
+ * per product (see .scratch/normalize-notes-moods/map.md). */
+function buildNoteRows(entry: RawPerfume) {
+  const positions = [
+    ["top", entry.notes_top],
+    ["middle", entry.notes_middle],
+    ["base", entry.notes_base],
+  ] as const;
+  return positions.flatMap(([position, value]) =>
+    splitList(value).map((name, i) => ({
+      productId: entry.id,
+      name,
+      position,
+      sortOrder: i,
+    })),
+  );
+}
 
 function buildProductRow(entry: RawPerfume) {
   const accords = splitList(entry.accords);
@@ -159,9 +198,31 @@ async function main() {
       .onConflictDoNothing();
   }
 
+  const accordRows = rawEntries.flatMap(buildAccordRows);
+  console.log(`Seeding ${accordRows.length} product accords...`);
+  for (let i = 0; i < accordRows.length; i += 150) {
+    await db
+      .insert(productAccords)
+      .values(accordRows.slice(i, i + 150))
+      .onConflictDoNothing();
+  }
+
+  const noteRows = rawEntries.flatMap(buildNoteRows);
+  console.log(`Seeding ${noteRows.length} product notes...`);
+  for (let i = 0; i < noteRows.length; i += 150) {
+    await db
+      .insert(productNotes)
+      .values(noteRows.slice(i, i + 150))
+      .onConflictDoNothing();
+  }
+
   const [{ count: productCount }] = await client`select count(*)::int as count from products`;
   const [{ count: variantCount }] = await client`select count(*)::int as count from product_variants`;
-  console.log(`Done. products=${productCount} product_variants=${variantCount}`);
+  const [{ count: accordCount }] = await client`select count(*)::int as count from product_accords`;
+  const [{ count: noteCount }] = await client`select count(*)::int as count from product_notes`;
+  console.log(
+    `Done. products=${productCount} product_variants=${variantCount} product_accords=${accordCount} product_notes=${noteCount}`,
+  );
 
   await client.end();
 }

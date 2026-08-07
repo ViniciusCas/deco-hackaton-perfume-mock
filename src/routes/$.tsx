@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import Button from "~/components/ui/Button";
 import IconButton from "~/components/ui/IconButton";
@@ -142,6 +142,7 @@ function ProductPage({ entry, variants, related }: {
                 label={inWishlist ? "Remove from wishlist" : "Add to wishlist"}
                 active={inWishlist}
                 filled={inWishlist}
+                activeTone="rose"
                 size="md"
                 disabled={toggleWishlist.isPending}
                 onClick={() => {
@@ -170,8 +171,6 @@ function ProductPage({ entry, variants, related }: {
             </dd>
             <dt className="text-muted">Family</dt>
             <dd className="text-ink">{entry.family}</dd>
-            <dt className="text-muted">Notes</dt>
-            <dd className="text-ink">{entry.notes}</dd>
             {entry.releaseYear && (
               <>
                 <dt className="text-muted">Release year</dt>
@@ -185,6 +184,45 @@ function ProductPage({ entry, variants, related }: {
               </>
             )}
           </dl>
+
+          {entry.accords && entry.accords.length > 0 && (
+            <div className="mt-7 border-t border-line pt-6">
+              <div className="mb-3 font-display text-2xs font-medium tracking-(--tracking-label) text-ink uppercase">
+                Accords
+              </div>
+              <ul className="flex flex-col gap-2">
+                {entry.accords.map((accord) => (
+                  <li key={accord.name} className="flex items-center gap-3 text-sm">
+                    <span className="w-24 shrink-0 truncate text-ink">{accord.name}</span>
+                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-blush">
+                      <div
+                        className="h-full rounded-full bg-rose"
+                        style={{ width: `${accord.strength}%` }}
+                      />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {entry.notesByPosition && (
+            <div className="mt-7 border-t border-line pt-6">
+              <div className="mb-3 font-display text-2xs font-medium tracking-(--tracking-label) text-ink uppercase">
+                Notes
+              </div>
+              <dl className="grid grid-cols-[80px_1fr] gap-y-2 text-sm">
+                {(["top", "middle", "base"] as const).map((position) =>
+                  entry.notesByPosition![position].length > 0 ? (
+                    <Fragment key={position}>
+                      <dt className="text-muted capitalize">{position}</dt>
+                      <dd className="text-ink">{entry.notesByPosition![position].join(", ")}</dd>
+                    </Fragment>
+                  ) : null,
+                )}
+              </dl>
+            </div>
+          )}
         </div>
       </div>
 

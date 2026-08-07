@@ -109,6 +109,50 @@ export const products = pgTable("products", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/**
+ * Real per-product accord blend (family/mood, but weighted and complete —
+ * see .scratch/normalize-notes-moods/map.md). Replaces `products.mood`,
+ * which only ever kept the first 4 accords joined into a plain string with
+ * no strength data. Source: perfumes.json's `accords`/`accords_strength`
+ * parallel semicolon-delimited lists (already present in the seed data,
+ * previously discarded past the first 4 by scripts/seed-catalog.ts).
+ */
+export const productAccords = pgTable(
+  "product_accords",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    productId: uuid("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    strength: integer("strength").notNull(),
+    sortOrder: integer("sort_order").notNull(),
+  },
+  (table) => [unique().on(table.productId, table.name)],
+);
+
+/**
+ * Real per-product note list, grouped by top/middle/base (a perfume's
+ * scent stages). Replaces `products.notes`, which only ever kept the
+ * first top note + first middle-or-base note joined into a one-line
+ * string. Source: perfumes.json's `notes_top`/`notes_middle`/`notes_base`.
+ */
+export const notePosition = pgEnum("note_position", ["top", "middle", "base"]);
+
+export const productNotes = pgTable(
+  "product_notes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    productId: uuid("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    position: notePosition("position").notNull(),
+    sortOrder: integer("sort_order").notNull(),
+  },
+  (table) => [unique().on(table.productId, table.position, table.name)],
+);
+
 export const productVariants = pgTable(
   "product_variants",
   {
@@ -218,10 +262,20 @@ export const orderItems = pgTable("order_items", {
 
 export const productsRelations = relations(products, ({ many }) => ({
   variants: many(productVariants),
+  accords: many(productAccords),
+  notes: many(productNotes),
 }));
 
 export const productVariantsRelations = relations(productVariants, ({ one }) => ({
   product: one(products, { fields: [productVariants.productId], references: [products.id] }),
+}));
+
+export const productAccordsRelations = relations(productAccords, ({ one }) => ({
+  product: one(products, { fields: [productAccords.productId], references: [products.id] }),
+}));
+
+export const productNotesRelations = relations(productNotes, ({ one }) => ({
+  product: one(products, { fields: [productNotes.productId], references: [products.id] }),
 }));
 
 export const userRelations = relations(user, ({ many }) => ({

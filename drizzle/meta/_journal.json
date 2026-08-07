@@ -8,6 +8,13 @@
       "when": 1786061798822,
       "tag": "0000_mushy_vargas",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1786137530682,
+      "tag": "0001_clear_tarantula",
+      "breakpoints": true
     }
   ]
 }

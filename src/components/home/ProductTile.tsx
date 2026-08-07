@@ -76,6 +76,7 @@ export default function ProductTile({ entry }: { entry: CatalogEntry }) {
           label={inWishlist ? "Remove from wishlist" : "Add to wishlist"}
           active={inWishlist}
           filled={inWishlist}
+          activeTone="rose"
           disabled={pending}
           onClick={() => {
             if (!isAuthenticated) {
