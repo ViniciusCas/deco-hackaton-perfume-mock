@@ -43,7 +43,14 @@ export async function getProductBySlug(slug: string): Promise<CatalogEntry | nul
     .from(products)
     .where(and(eq(products.slug, slug), eq(products.isActive, true)))
     .limit(1);
-  return row ? toCatalogEntry(row) : null;
+  if (!row) return null;
+  return {
+    ...toCatalogEntry(row),
+    description: row.description ?? undefined,
+    votes: row.votes ?? undefined,
+    releaseYear: row.releaseYear ?? undefined,
+    gender: row.gender ?? undefined,
+  };
 }
 
 /**

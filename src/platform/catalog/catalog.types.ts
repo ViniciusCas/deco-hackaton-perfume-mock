@@ -9,6 +9,11 @@ export interface CatalogEntry {
   rating: number;
   image: string;
   tag?: "New" | "Limited";
+  /** PDP-only fields — populated by getProductBySlug, undefined from list queries (not selected there). */
+  description?: string;
+  votes?: number;
+  releaseYear?: number;
+  gender?: string;
 }
 
 export interface ProductVariant {

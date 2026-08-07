@@ -109,6 +109,34 @@ function ProductPage({
               <p className="text-xs text-error">Couldn't add to bag. Please try again.</p>
             )}
           </div>
+
+          {entry.description && (
+            <p className="mt-7 text-sm leading-relaxed text-muted">{entry.description}</p>
+          )}
+
+          <dl className="mt-7 grid grid-cols-2 gap-x-6 gap-y-3 border-t border-line pt-6 text-sm">
+            <dt className="text-muted">Rating</dt>
+            <dd className="text-ink">
+              {entry.rating > 0 ? `${entry.rating.toFixed(1)} / 5` : "—"}
+              {entry.votes ? ` (${entry.votes.toLocaleString()} votes)` : ""}
+            </dd>
+            <dt className="text-muted">Family</dt>
+            <dd className="text-ink">{entry.family}</dd>
+            <dt className="text-muted">Notes</dt>
+            <dd className="text-ink">{entry.notes}</dd>
+            {entry.releaseYear && (
+              <>
+                <dt className="text-muted">Release year</dt>
+                <dd className="text-ink">{entry.releaseYear}</dd>
+              </>
+            )}
+            {entry.gender && (
+              <>
+                <dt className="text-muted">For</dt>
+                <dd className="text-ink capitalize">{entry.gender}</dd>
+              </>
+            )}
+          </dl>
         </div>
       </div>
 
