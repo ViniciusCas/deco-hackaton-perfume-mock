@@ -234,27 +234,17 @@ accessed from a second Worker via its own Hyperdrive binding and its own
   the new SSR loader (diagnosed via `wrangler dev --remote` since local
   `vite dev`/`wrangler dev` both masked it — see the ticket for the full
   diagnostic account). Deployed (Version `858c45b7`), confirmed 200 on the
-  real production URL. **Known unresolved gap**: even after the crash fix,
-  the SSR prefetch doesn't appear to actually populate data in production
-  (shows "0 fragrances" at first paint) — degrades gracefully instead of
-  crashing, but the underlying cause is unknown and unverified whether
-  client-side hydration successfully recovers it (no browser available to
-  confirm) — see fog below.
+  real production URL. SSR prefetch itself still doesn't appear to
+  populate data server-side (shows "0 fragrances" at first paint), but
+  **user-confirmed in a real browser**: client-side hydration recovers
+  fully — count corrects, tiles render, facet counts are real, filtering
+  and pagination work. Cosmetic first-paint-only gap, not a functional one;
+  root cause not chased further.
   [Move header search to debounced API calls](issues/13-header-search-api.md)
   and [Migrate PDP/home-collections and remove the old catalog surface](issues/14-catalog-cutover-remaining.md)
   are still open.
 
 ## Not yet specified
-
-- Why `/fragrance`'s SSR prefetch doesn't successfully populate data in
-  production even after ticket 12's crash fix (page shows "0 fragrances"
-  at first paint on the live site). The crash is fixed (graceful
-  degradation via `.catch`), and the same `sillageApiFetch` mechanism is
-  proven working for client-side calls all session, but *why* the
-  server-side prefetch specifically fails here — when cart's own SSR
-  prefetch (via `createServerFn`) works fine — is unknown. Whether this is
-  worth chasing further depends on whether client-side hydration actually
-  recovers correctly, which hasn't been confirmed (no browser available).
 
 - OpenAPI/schema documentation for the new routes — not sharp until the
   endpoint surface itself is designed.

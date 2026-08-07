@@ -121,18 +121,17 @@ matching the established pattern. Verified fix via the same
 (Version `858c45b7`) and confirmed `/fragrance` returns 200 on the actual
 production URL across three consecutive requests.
 
-**Known remaining gap, not fully resolved**: even after the fix, the SSR
-prefetch itself doesn't appear to successfully populate data in
-production — `/fragrance` still shows "0 fragrances" at first paint
-(confirmed on the real deployed URL, not just the `--remote` reproduction).
-The crash is gone (graceful degradation via the `.catch`), but *why* the
-prefetch fetch itself fails server-side — when the exact same
-`sillageApiFetch` mechanism is proven working for client-side calls across
-cart/wishlist/address all session, and cart's own SSR prefetch (via
-`createServerFn`) works fine — is unresolved. Not chased further given
-time spent already and that the site is now functional, not broken: real
-users should still get correct data via the client-side `useProducts()`/
-`useProductFacets()` fetch after hydration (same fallback path already
-accepted for guest-cart SSR earlier in this map), though this specific
-claim **could not be verified without a real browser** in this session.
-Logged as fog on the map, not silently closed as fully solved.
+**SSR-prefetch gap, now confirmed harmless.** Even after the crash fix, the
+SSR prefetch itself didn't appear to populate data server-side (`/fragrance`
+showed "0 fragrances" at first paint on curl'd HTML). Root cause was never
+chased down — instead, the user checked the live page in a real browser
+and confirmed **all of it self-corrects**: the count updates to the real
+total shortly after load, product tiles render, filter checkboxes show
+real counts, and filtering/pagination actually work. Client-side hydration
+(`useProducts()`/`useProductFacets()`) recovers exactly as the
+`.catch(() => {})` fix was designed to allow, matching the same
+SSR-flash-then-recover pattern already accepted for guest-cart SSR
+elsewhere on this map. The *why* behind the SSR-side fetch not resolving
+is still unknown, but it's now a confirmed cosmetic/first-paint-only issue,
+not a functional one — not worth further investigation unless it
+resurfaces as an actual user-facing problem.
