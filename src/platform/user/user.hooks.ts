@@ -1,11 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  getUserServerFn,
-  recoverPasswordServerFn,
-  signInServerFn,
-  signOutServerFn,
-  signUpServerFn,
-} from "./user.actions";
+import { getUserServerFn, signInServerFn, signOutServerFn, signUpServerFn } from "./user.actions";
 import type { Person, UserState } from "./user.types";
 
 export const USER_QUERY_KEY = ["user"] as const;
@@ -61,8 +55,3 @@ export function useSignOut() {
   });
 }
 
-export function useRecoverPassword() {
-  return useMutation({
-    mutationFn: (input: { email: string }) => recoverPasswordServerFn({ data: input }),
-  });
-}

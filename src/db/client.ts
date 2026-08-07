@@ -11,11 +11,12 @@
  * - `fetch_types: false` — skips a schema-introspection query on connect;
  *   Cloudflare's standard Hyperdrive recommendation.
  *
- * Local dev (`vite dev`) connects *directly* to RDS instead of through
- * Hyperdrive (see `.dev.vars`), which needs real SSL — and SSL negotiation
- * currently hangs in the local Miniflare socket layer regardless of mode.
- * DB-touching routes are therefore only reliably testable against a real
- * deploy right now; see the map's "local dev DB story" note.
+ * Local dev (`vite dev`) connects to a local Postgres container instead of
+ * Hyperdrive — see `docker-compose.yml` and `.dev.vars`. `@cloudflare/vite-plugin`'s
+ * local Hyperdrive emulation refuses to target a remote host at all, and
+ * separately, direct TLS negotiation to RDS hangs in the local Miniflare
+ * socket layer — a local, non-TLS Postgres sidesteps both (see the map's
+ * "local dev DB story" note).
  */
 // @ts-expect-error -- ambient Cloudflare Workers module, no local types
 import { env } from "cloudflare:workers";

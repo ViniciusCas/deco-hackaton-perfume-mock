@@ -14,6 +14,12 @@
  *   time so later catalog or address-book edits never rewrite order history.
  * - `products.isActive` is a soft-delete flag — rows are never hard-deleted so
  *   past cart/order references never dangle.
+ *
+ * Identity: the hand-rolled `customers` table from ticket 01 was replaced by
+ * Better Auth's own `user`/`session`/`account`/`verification` tables — see
+ * .scratch/postgres-backend/issues/02-auth-model.md. `user.id` is a text id
+ * (Better Auth's default, not a uuid), so every FK that used to point at
+ * `customers.id` now points at `user.id` instead.
  */
 import {
   boolean,
@@ -27,6 +33,58 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
+
+export const user = pgTable("user", {
+  id: text("id").primaryKey(),
+  email: text("email").notNull().unique(),
+  emailVerified: boolean("email_verified").notNull().default(false),
+  name: text("name").notNull(),
+  givenName: text("given_name"),
+  familyName: text("family_name"),
+  image: text("image"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const session = pgTable("session", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  token: text("token").notNull().unique(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const account = pgTable("account", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  accountId: text("account_id").notNull(),
+  providerId: text("provider_id").notNull(),
+  password: text("password"),
+  accessToken: text("access_token"),
+  refreshToken: text("refresh_token"),
+  idToken: text("id_token"),
+  accessTokenExpiresAt: timestamp("access_token_expires_at", { withTimezone: true }),
+  refreshTokenExpiresAt: timestamp("refresh_token_expires_at", { withTimezone: true }),
+  scope: text("scope"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const verification = pgTable("verification", {
+  id: text("id").primaryKey(),
+  identifier: text("identifier").notNull(),
+  value: text("value").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});
 
 export const orderStatus = pgEnum("order_status", ["placed", "cancelled"]);
 
@@ -66,20 +124,11 @@ export const productVariants = pgTable(
   (table) => [unique().on(table.productId, table.size)],
 );
 
-export const customers = pgTable("customers", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  email: text("email").notNull().unique(),
-  givenName: text("given_name"),
-  familyName: text("family_name"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-});
-
 export const addresses = pgTable("addresses", {
   id: uuid("id").primaryKey().defaultRandom(),
-  customerId: uuid("customer_id")
+  customerId: text("customer_id")
     .notNull()
-    .references(() => customers.id, { onDelete: "cascade" }),
+    .references(() => user.id, { onDelete: "cascade" }),
   label: text("label"),
   recipient: text("recipient"),
   streetAddress: text("street_address"),
@@ -95,7 +144,7 @@ export const addresses = pgTable("addresses", {
 // in attaches `customerId` to the same row rather than merging two carts.
 export const carts = pgTable("carts", {
   id: uuid("id").primaryKey().defaultRandom(),
-  customerId: uuid("customer_id").references(() => customers.id, { onDelete: "set null" }),
+  customerId: text("customer_id").references(() => user.id, { onDelete: "set null" }),
   sessionToken: text("session_token").notNull().unique(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -121,9 +170,9 @@ export const wishlistItems = pgTable(
   "wishlist_items",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    customerId: uuid("customer_id")
+    customerId: text("customer_id")
       .notNull()
-      .references(() => customers.id, { onDelete: "cascade" }),
+      .references(() => user.id, { onDelete: "cascade" }),
     productId: uuid("product_id")
       .notNull()
       .references(() => products.id, { onDelete: "cascade" }),
@@ -137,7 +186,7 @@ export const wishlistItems = pgTable(
 // book — and later address-book edits both work the same way.
 export const orders = pgTable("orders", {
   id: uuid("id").primaryKey().defaultRandom(),
-  customerId: uuid("customer_id").references(() => customers.id, { onDelete: "set null" }),
+  customerId: text("customer_id").references(() => user.id, { onDelete: "set null" }),
   guestEmail: text("guest_email"),
   status: orderStatus("status").notNull().default("placed"),
   shippingRecipient: text("shipping_recipient"),
@@ -175,19 +224,29 @@ export const productVariantsRelations = relations(productVariants, ({ one }) => 
   product: one(products, { fields: [productVariants.productId], references: [products.id] }),
 }));
 
-export const customersRelations = relations(customers, ({ many }) => ({
+export const userRelations = relations(user, ({ many }) => ({
+  sessions: many(session),
+  accounts: many(account),
   addresses: many(addresses),
   carts: many(carts),
   wishlistItems: many(wishlistItems),
   orders: many(orders),
 }));
 
+export const sessionRelations = relations(session, ({ one }) => ({
+  user: one(user, { fields: [session.userId], references: [user.id] }),
+}));
+
+export const accountRelations = relations(account, ({ one }) => ({
+  user: one(user, { fields: [account.userId], references: [user.id] }),
+}));
+
 export const addressesRelations = relations(addresses, ({ one }) => ({
-  customer: one(customers, { fields: [addresses.customerId], references: [customers.id] }),
+  customer: one(user, { fields: [addresses.customerId], references: [user.id] }),
 }));
 
 export const cartsRelations = relations(carts, ({ one, many }) => ({
-  customer: one(customers, { fields: [carts.customerId], references: [customers.id] }),
+  customer: one(user, { fields: [carts.customerId], references: [user.id] }),
   items: many(cartItems),
 }));
 
@@ -197,12 +256,12 @@ export const cartItemsRelations = relations(cartItems, ({ one }) => ({
 }));
 
 export const wishlistItemsRelations = relations(wishlistItems, ({ one }) => ({
-  customer: one(customers, { fields: [wishlistItems.customerId], references: [customers.id] }),
+  customer: one(user, { fields: [wishlistItems.customerId], references: [user.id] }),
   product: one(products, { fields: [wishlistItems.productId], references: [products.id] }),
 }));
 
 export const ordersRelations = relations(orders, ({ one, many }) => ({
-  customer: one(customers, { fields: [orders.customerId], references: [customers.id] }),
+  customer: one(user, { fields: [orders.customerId], references: [user.id] }),
   items: many(orderItems),
 }));
 

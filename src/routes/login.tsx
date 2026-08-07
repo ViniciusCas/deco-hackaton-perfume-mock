@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useRecoverPassword, useSignIn, useSignUp, useUser } from "../platform/user";
+import { useSignIn, useSignUp, useUser } from "../platform/user";
 import Button from "../components/ui/Button";
 import { clx } from "~/sdk/clx";
 
@@ -8,7 +8,7 @@ export const Route = createFileRoute("/login")({
   component: LoginPage,
 });
 
-type View = "signin" | "signup" | "recover";
+type View = "signin" | "signup";
 
 const LABEL_CLASS = "font-display text-2xs font-medium tracking-(--tracking-label) uppercase";
 const INPUT_CLASS =
@@ -21,7 +21,6 @@ function LoginPage() {
 
   const signIn = useSignIn();
   const signUp = useSignUp();
-  const recover = useRecoverPassword();
 
   if (isAuthenticated) {
     return (
@@ -63,12 +62,6 @@ function LoginPage() {
     );
   };
 
-  const onRecover = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const data = new FormData(e.currentTarget);
-    recover.mutate({ email: `${data.get("email") ?? ""}`.trim() });
-  };
-
   return (
     <div className="grid min-h-screen grid-cols-1 pt-[90px] sm:pt-[110px] lg:grid-cols-2">
       {/* Decorative panel — a gradient stand-in for campaign photography (no real
@@ -87,32 +80,30 @@ function LoginPage() {
 
       <div className="flex flex-col justify-center px-6 py-16 sm:px-12 lg:px-20">
         <div className="mx-auto w-full max-w-sm">
-          {view !== "recover" && (
-            <div className="mb-9 flex gap-7">
-              <button
-                type="button"
-                onClick={() => setView("signin")}
-                className={clx(
-                  LABEL_CLASS,
-                  "border-b-2 pb-2.5",
-                  view === "signin" ? "border-accent text-ink" : "border-transparent text-muted",
-                )}
-              >
-                Sign in
-              </button>
-              <button
-                type="button"
-                onClick={() => setView("signup")}
-                className={clx(
-                  LABEL_CLASS,
-                  "border-b-2 pb-2.5",
-                  view === "signup" ? "border-accent text-ink" : "border-transparent text-muted",
-                )}
-              >
-                Create account
-              </button>
-            </div>
-          )}
+          <div className="mb-9 flex gap-7">
+            <button
+              type="button"
+              onClick={() => setView("signin")}
+              className={clx(
+                LABEL_CLASS,
+                "border-b-2 pb-2.5",
+                view === "signin" ? "border-accent text-ink" : "border-transparent text-muted",
+              )}
+            >
+              Sign in
+            </button>
+            <button
+              type="button"
+              onClick={() => setView("signup")}
+              className={clx(
+                LABEL_CLASS,
+                "border-b-2 pb-2.5",
+                view === "signup" ? "border-accent text-ink" : "border-transparent text-muted",
+              )}
+            >
+              Create account
+            </button>
+          </div>
 
           {view === "signin" && (
             <form onSubmit={onSignIn} method="post" action="/login" className="flex flex-col gap-4">
@@ -160,17 +151,6 @@ function LoginPage() {
                   "Sign in"
                 )}
               </Button>
-
-              <button
-                type="button"
-                className="self-center text-sm text-muted hover:text-ink"
-                onClick={() => {
-                  recover.reset();
-                  setView("recover");
-                }}
-              >
-                Forgot your password?
-              </button>
             </form>
           )}
 
@@ -224,7 +204,7 @@ function LoginPage() {
                   type="password"
                   name="password"
                   required
-                  minLength={5}
+                  minLength={8}
                   autoComplete="new-password"
                   className={INPUT_CLASS}
                   disabled={signUp.isPending}
@@ -246,66 +226,6 @@ function LoginPage() {
                   "Create account"
                 )}
               </Button>
-            </form>
-          )}
-
-          {view === "recover" && (
-            <form
-              onSubmit={onRecover}
-              method="post"
-              action="/login"
-              className="flex flex-col gap-4"
-            >
-              <h1 className="font-display text-3xl font-light text-ink">Reset password</h1>
-              <p className="-mt-2 text-sm text-muted">We'll send a recovery link to your email.</p>
-
-              <label className="flex flex-col gap-2" htmlFor="recover-email">
-                <span className={LABEL_CLASS}>Email</span>
-                <input
-                  id="recover-email"
-                  type="email"
-                  name="email"
-                  required
-                  autoComplete="username email"
-                  className={INPUT_CLASS}
-                  disabled={recover.isPending || recover.isSuccess}
-                />
-              </label>
-
-              {recover.isError && (
-                <p className="text-sm text-error">
-                  {recover.error instanceof Error
-                    ? recover.error.message
-                    : "Could not send recovery email."}
-                </p>
-              )}
-
-              {recover.isSuccess && (
-                <p className="text-sm text-success">
-                  If an account exists for that email, a reset link is on its way.
-                </p>
-              )}
-
-              <Button
-                type="submit"
-                variant="solid"
-                size="md"
-                disabled={recover.isPending || recover.isSuccess}
-              >
-                {recover.isPending ? (
-                  <span className="loading loading-spinner loading-xs" />
-                ) : (
-                  "Send reset link"
-                )}
-              </Button>
-
-              <button
-                type="button"
-                className="self-center text-sm text-muted hover:text-ink"
-                onClick={() => setView("signin")}
-              >
-                ← Back to sign in
-              </button>
             </form>
           )}
 

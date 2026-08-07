@@ -1,78 +1,67 @@
 import { createServerFn } from "@tanstack/react-start";
-import {
-  deleteCookie,
-  getRequest,
-  getRequestProtocol,
-  setCookie,
-} from "@tanstack/react-start/server";
-import {
-  getShopifyClient,
-  signIn as shopifySignIn,
-  signUp as shopifySignUp,
-  userLoader as shopifyUserLoader,
-} from "@decocms/apps-shopify";
+import { getRequest, setResponseHeader } from "@tanstack/react-start/server";
+import { APIError } from "better-auth/api";
+import { getAuth } from "~/db/auth";
 import type { Person } from "./user.types";
 
-const CUSTOMER_COOKIE = "secure_customer_sig";
-const ONE_WEEK_S = 7 * 24 * 60 * 60;
+interface AuthUser {
+  id: string;
+  email: string;
+  givenName?: string | null;
+  familyName?: string | null;
+}
 
-const toPerson = (u: Awaited<ReturnType<typeof shopifyUserLoader>>): Person | null => {
+function toPerson(u: AuthUser | null | undefined): Person | null {
   if (!u) return null;
   return {
-    "@id": u["@id"],
+    "@id": u.id,
     email: u.email,
-    givenName: u.givenName,
-    familyName: u.familyName,
+    givenName: u.givenName ?? undefined,
+    familyName: u.familyName ?? undefined,
   };
-};
+}
 
-const headersFromAccessToken = (accessToken: string): Headers => {
-  const h = new Headers();
-  h.set("cookie", `${CUSTOMER_COOKIE}=${accessToken}`);
-  return h;
-};
+// Better Auth's server API doesn't run inside an HTTP handler here, so it
+// can't set the response's Set-Cookie header itself — forward whatever it
+// produced (session cookie on sign-in/up, its clearing on sign-out) onto
+// this server fn's own response, same idea as the old Shopify token cookie.
+function forwardSetCookie(headers: Headers) {
+  const cookies = headers.getSetCookie?.() ?? [];
+  if (cookies.length) setResponseHeader("set-cookie", cookies);
+}
 
-const persistAccessToken = (accessToken: string) => {
-  // `secure` cookies are silently dropped by browsers on plain http://
-  // (localhost is treated as a special case by Chrome/Firefox but not Safari).
-  // Mirror the protocol so dev (http) and prod (https) both work.
-  const isHttps = getRequestProtocol() === "https";
-  setCookie(CUSTOMER_COOKIE, accessToken, {
-    path: "/",
-    maxAge: ONE_WEEK_S,
-    httpOnly: true,
-    sameSite: "lax",
-    secure: isHttps,
-  });
-};
+async function rethrowAsPlainError<T>(run: () => Promise<T>): Promise<T> {
+  try {
+    return await run();
+  } catch (err) {
+    if (err instanceof APIError) {
+      throw new Error(err.body?.message ?? err.message ?? "Something went wrong.");
+    }
+    throw err;
+  }
+}
 
 export const getUserServerFn = createServerFn({ method: "GET" }).handler(
   async (): Promise<Person | null> => {
     const request = getRequest();
-    const u = await shopifyUserLoader(request.headers);
-    return toPerson(u);
+    const auth = getAuth();
+    const result = await auth.api.getSession({ headers: request.headers });
+    return toPerson(result?.user as AuthUser | null | undefined);
   },
 );
 
 export const signInServerFn = createServerFn({ method: "POST" })
   .inputValidator((input: { email: string; password: string }) => input)
   .handler(async (ctx): Promise<Person | null> => {
-    const request = getRequest();
-    // Don't pass responseHeaders — we set the cookie ourselves below so the
-    // `secure` flag matches the request protocol.
-    const result = await shopifySignIn({
-      email: ctx.data.email,
-      password: ctx.data.password,
-      requestHeaders: request.headers,
-    });
-    const token = result?.customerAccessTokenCreate?.customerAccessToken?.accessToken;
-    if (!token) {
-      const msg = result?.customerAccessTokenCreate?.customerUserErrors?.[0]?.message;
-      throw new Error(msg ?? "Invalid email or password");
-    }
-    persistAccessToken(token);
-    const u = await shopifyUserLoader(headersFromAccessToken(token));
-    return toPerson(u);
+    const auth = getAuth();
+    const { headers, response } = await rethrowAsPlainError(() =>
+      auth.api.signInEmail({
+        body: { email: ctx.data.email, password: ctx.data.password },
+        returnHeaders: true,
+      }),
+    );
+    forwardSetCookie(headers);
+    return toPerson(response?.user as AuthUser | null | undefined);
   });
 
 export const signUpServerFn = createServerFn({ method: "POST" })
@@ -80,68 +69,35 @@ export const signUpServerFn = createServerFn({ method: "POST" })
     (input: { email: string; password: string; firstName?: string; lastName?: string }) => input,
   )
   .handler(async (ctx): Promise<Person | null> => {
-    const request = getRequest();
+    const auth = getAuth();
+    const name =
+      [ctx.data.firstName, ctx.data.lastName].filter(Boolean).join(" ").trim() || ctx.data.email;
 
-    const created = await shopifySignUp({
-      email: ctx.data.email,
-      password: ctx.data.password,
-      firstName: ctx.data.firstName,
-      lastName: ctx.data.lastName,
-    });
-    const errs = created?.customerCreate?.customerUserErrors;
-    if (errs?.length) {
-      throw new Error(errs[0].message ?? "Could not create account");
-    }
-
-    const signin = await shopifySignIn({
-      email: ctx.data.email,
-      password: ctx.data.password,
-      requestHeaders: request.headers,
-    });
-    const token = signin?.customerAccessTokenCreate?.customerAccessToken?.accessToken;
-    if (!token) {
-      throw new Error("Account created, but auto sign-in failed.");
-    }
-    persistAccessToken(token);
-    const u = await shopifyUserLoader(headersFromAccessToken(token));
-    return toPerson(u);
+    const { headers, response } = await rethrowAsPlainError(() =>
+      auth.api.signUpEmail({
+        body: {
+          email: ctx.data.email,
+          password: ctx.data.password,
+          name,
+          givenName: ctx.data.firstName,
+          familyName: ctx.data.lastName,
+        },
+        returnHeaders: true,
+      }),
+    );
+    forwardSetCookie(headers);
+    return toPerson(response?.user as AuthUser | null | undefined);
   });
 
 export const signOutServerFn = createServerFn({ method: "POST" }).handler(
   async (): Promise<null> => {
-    deleteCookie(CUSTOMER_COOKIE, { path: "/" });
+    const request = getRequest();
+    const auth = getAuth();
+    const { headers } = await auth.api.signOut({
+      headers: request.headers,
+      returnHeaders: true,
+    });
+    forwardSetCookie(headers);
     return null;
   },
 );
-
-const RECOVER_PASSWORD_MUTATION = `
-  mutation RecoverPassword($email: String!) {
-    customerRecover(email: $email) {
-      customerUserErrors { code field message }
-    }
-  }
-`;
-
-interface RecoverResult {
-  customerRecover: {
-    customerUserErrors: Array<{
-      code?: string;
-      field?: string[] | null;
-      message: string;
-    }>;
-  };
-}
-
-export const recoverPasswordServerFn = createServerFn({ method: "POST" })
-  .inputValidator((input: { email: string }) => input)
-  .handler(async (ctx): Promise<{ ok: true }> => {
-    const client = getShopifyClient();
-    const data = await client.query<RecoverResult>(RECOVER_PASSWORD_MUTATION, {
-      email: ctx.data.email,
-    });
-    const errs = data?.customerRecover?.customerUserErrors;
-    if (errs?.length) {
-      throw new Error(errs[0].message ?? "Could not send recovery email.");
-    }
-    return { ok: true };
-  });

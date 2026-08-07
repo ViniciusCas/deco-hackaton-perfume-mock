@@ -10,7 +10,7 @@ Blocked by: 01
 
 ## Answer
 
-**Draft — for review.**
+**Implemented.**
 
 Use **[Better Auth](https://www.better-auth.com/)** rather than hand-rolled password hashing/session management. Rationale for picking a framework over the original from-scratch plan (email+password + Web Crypto PBKDF2 + a hand-built `sessions` table):
 
@@ -32,4 +32,14 @@ Decisions carried over from the original draft (unaffected by the framework swap
    - **Addresses** — same guard as wishlist (`addresses.customer_id` not-null).
 5. **Explicitly out of scope**: password reset flow, rate-limiting on sign-in, multi-device session management UI — Better Auth supports plugins for some of these later if needed, but none are wired up for the hackathon demo.
 
-**Open question for ticket 07 to resolve during implementation**: whether our existing `customers` table becomes Better Auth's `user` table (via its Drizzle schema generation/customization options) or stays separate with a `customer_id`/Better-Auth-`user.id` mapping column. Better Auth's Drizzle adapter supports customizing table/column names, so folding `customers` into its schema (keeping `given_name`/`family_name`) is likely possible and avoids duplicate identity tables — but that's an implementation detail to confirm against the actual library docs, not a design blocker.
+**Resolution of the open schema question**: the hand-rolled `customers` table (ticket 01) was dropped entirely and replaced by Better Auth's own `user`/`session`/`account`/`verification` tables in `src/db/schema.ts` — no duplicate identity table. `user` carries `given_name`/`family_name` as additional fields (Better Auth's `user.additionalFields` config in `src/db/auth.ts`) alongside its own required `name`. Every FK that pointed at `customers.id` (`addresses.customer_id`, `carts.customer_id`, `wishlist_items.customer_id`, `orders.customer_id`) now points at `user.id` — and changed type from `uuid` to `text`, since Better Auth's default id generator produces string ids, not uuids.
+
+**What shipped**:
+- `src/db/schema.ts` — `user`, `session`, `account`, `verification` tables (Better Auth's shape, hand-written rather than CLI-generated since the CLI's introspection needs the same TTY-prompt workaround as `drizzle-kit generate` did — see ticket 04).
+- `src/db/auth.ts` — `getAuth()`, built fresh per request (same constraint as `getDb()`: the Hyperdrive binding only exists inside a request's execution context, so this can't be a module-level singleton). `baseURL` derived from the incoming request (no fixed canonical host — deployed on workers.dev/preview subdomains). `session.disableSessionRefresh: true` implements the "no sliding renewal" decision (a raw `updateAge: 0` does the *opposite* — verified against Better Auth's refresh-threshold formula, it means "always refresh").
+- `src/platform/user/user.actions.ts` — `getUserServerFn`/`signInServerFn`/`signUpServerFn`/`signOutServerFn` rewritten against `auth.api.getSession`/`signInEmail`/`signUpEmail`/`signOut`, keeping the exact same exported function names and `Person` shape so `user.hooks.ts`, `login.tsx`, and `account.tsx` needed no changes to their hook surface (`useUser`, `useSignIn`, `useSignUp`, `useSignOut`). Better Auth's server API doesn't run inside an HTTP handler when called this way, so it can't set cookies itself — `forwardSetCookie()` pulls its `Set-Cookie` header(s) via `returnHeaders: true` and re-applies them through TanStack Start's `setResponseHeader`.
+- Password reset dropped per the "explicitly out of scope" line above: removed `recoverPasswordServerFn`/`useRecoverPassword` and the recover view from `login.tsx` (was a working stub against Shopify's recover mutation; no equivalent wired up here).
+- Signup password minimum raised from 5 to 8 characters in `login.tsx` to match Better Auth's default `minPasswordLength`.
+- Verified end-to-end against the local Postgres container (sign-up persists a real row with `given_name`/`family_name`, session cookie round-trips through `getSession`, sign-in works, wrong password is rejected with a clean error message) via a throwaway script exercising the same schema/adapter config, plus `/login` and `/account` rendering correctly through the real dev server.
+
+Cart/wishlist/address are still on the unconnected Shopify-shaped plumbing — wiring signed-in identity into them is ticket 07's job, not done here.
