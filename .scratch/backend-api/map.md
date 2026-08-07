@@ -220,13 +220,41 @@ accessed from a second Worker via its own Hyperdrive binding and its own
   per applied filters), `/:slug` (detail), `/:slug/variants`,
   `/related/:slug` (same-family), `/home-collections`. Verified locally
   against real seeded data (`sillage-api` commit `852df20`, pushed).
-  Deploy held until a frontend consumer exists — tickets
-  [Move /fragrance to server-side filtering](issues/12-fragrance-server-side.md),
-  [Move header search to debounced API calls](issues/13-header-search-api.md),
+  Now deployed and live.
+- [Move /fragrance to server-side filtering](issues/12-fragrance-server-side.md) —
+  new `src/platform/catalog/products.hooks.ts` (`useProducts`/
+  `useProductFacets`), `/fragrance`'s filter/sort/page state moved from
+  local `useState` into the URL (shareable/bookmarkable), facet counts now
+  live per applied filters. Caught and fixed two real bugs during
+  verification: a `validateSearch` coercion bug that silently dropped
+  `family`/`page` from every real URL (raw query params are strings, not
+  native arrays/numbers — `?family=Woody&page=2` was being stripped down
+  to `?sort=...` by the router's canonical-URL redirect), and a
+  **production-only 500 crash** from an unhandled prefetch rejection in
+  the new SSR loader (diagnosed via `wrangler dev --remote` since local
+  `vite dev`/`wrangler dev` both masked it — see the ticket for the full
+  diagnostic account). Deployed (Version `858c45b7`), confirmed 200 on the
+  real production URL. **Known unresolved gap**: even after the crash fix,
+  the SSR prefetch doesn't appear to actually populate data in production
+  (shows "0 fragrances" at first paint) — degrades gracefully instead of
+  crashing, but the underlying cause is unknown and unverified whether
+  client-side hydration successfully recovers it (no browser available to
+  confirm) — see fog below.
+  [Move header search to debounced API calls](issues/13-header-search-api.md)
   and [Migrate PDP/home-collections and remove the old catalog surface](issues/14-catalog-cutover-remaining.md)
-  are all still open.
+  are still open.
 
 ## Not yet specified
+
+- Why `/fragrance`'s SSR prefetch doesn't successfully populate data in
+  production even after ticket 12's crash fix (page shows "0 fragrances"
+  at first paint on the live site). The crash is fixed (graceful
+  degradation via `.catch`), and the same `sillageApiFetch` mechanism is
+  proven working for client-side calls all session, but *why* the
+  server-side prefetch specifically fails here — when cart's own SSR
+  prefetch (via `createServerFn`) works fine — is unknown. Whether this is
+  worth chasing further depends on whether client-side hydration actually
+  recovers correctly, which hasn't been confirmed (no browser available).
 
 - OpenAPI/schema documentation for the new routes — not sharp until the
   endpoint surface itself is designed.
