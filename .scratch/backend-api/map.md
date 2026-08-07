@@ -214,11 +214,17 @@ accessed from a second Worker via its own Hyperdrive binding and its own
   facets endpoint), the header searchbar moving from client-cached-array
   search to debounced API calls, and PDP's related-products rail switching
   from arbitrary to same-family. Split into four implementation tickets
-  since the actual build is well beyond one session:
-  [Build sillage-api's product endpoints](issues/11-catalog-api-endpoints.md),
+  since the actual build is well beyond one session.
+- [Build sillage-api's product endpoints](issues/11-catalog-api-endpoints.md) —
+  `GET /v1/products` (search/filter/sort/paginate), `/facets` (live counts
+  per applied filters), `/:slug` (detail), `/:slug/variants`,
+  `/related/:slug` (same-family), `/home-collections`. Verified locally
+  against real seeded data (`sillage-api` commit `852df20`, pushed).
+  Deploy held until a frontend consumer exists — tickets
   [Move /fragrance to server-side filtering](issues/12-fragrance-server-side.md),
   [Move header search to debounced API calls](issues/13-header-search-api.md),
-  [Migrate PDP/home-collections and remove the old catalog surface](issues/14-catalog-cutover-remaining.md).
+  and [Migrate PDP/home-collections and remove the old catalog surface](issues/14-catalog-cutover-remaining.md)
+  are all still open.
 
 ## Not yet specified
 
