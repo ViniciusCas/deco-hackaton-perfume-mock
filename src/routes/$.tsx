@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import Button from "~/components/ui/Button";
+import IconButton from "~/components/ui/IconButton";
 import ProductTile from "~/components/home/ProductTile";
 import ProductHeroImage from "~/components/home/ProductHeroImage";
 import {
@@ -11,6 +12,8 @@ import {
   getProductVariantsBySlugServerFn,
 } from "~/platform/catalog";
 import { useAddToCart } from "~/platform/cart";
+import { useToggleWishlist, useWishlist } from "~/platform/wishlist";
+import { useUser } from "~/platform/user";
 
 export const Route = createFileRoute("/$")({
   component: CatchAllPage,
@@ -42,6 +45,11 @@ function ProductPage({
   const selectedVariant = variants.find((v) => v.id === selectedVariantId);
   const related = catalog.filter((c) => c.slug !== slug).slice(0, 4);
   const addToCart = useAddToCart();
+  const { isInWishlist } = useWishlist();
+  const toggleWishlist = useToggleWishlist();
+  const { isAuthenticated } = useUser();
+  const navigate = useNavigate();
+  const inWishlist = isInWishlist(entry.id);
 
   return (
     <div className="pt-[90px] sm:pt-[110px]">
@@ -56,7 +64,9 @@ function ProductPage({
             {entry.name}
           </h1>
           <p className="mt-3 text-sm text-muted">{entry.notes}</p>
-          <div className="mt-4 font-display text-2xl text-ink">${entry.price}</div>
+          <div className="mt-4 font-display text-2xl text-ink">
+            ${(selectedVariant?.price ?? entry.price).toFixed(2)}
+          </div>
 
           {variants.length > 0 && (
             <div className="mt-7">
@@ -84,27 +94,44 @@ function ProductPage({
           )}
 
           <div className="mt-7 flex flex-col gap-2">
-            <Button
-              type="button"
-              variant="solid"
-              size="md"
-              className="w-full sm:w-auto"
-              disabled={!selectedVariant || selectedVariant.stock === 0 || addToCart.isPending}
-              onClick={() =>
-                selectedVariant &&
-                addToCart.mutate({ variantId: selectedVariant.id, quantity: 1 })
-              }
-            >
-              {addToCart.isPending ? (
-                <span className="loading loading-spinner loading-xs" />
-              ) : !selectedVariant || selectedVariant.stock === 0 ? (
-                "Out of stock"
-              ) : addToCart.isSuccess ? (
-                "Added!"
-              ) : (
-                "Add to bag"
-              )}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="solid"
+                size="md"
+                className="w-full sm:w-auto"
+                disabled={!selectedVariant || selectedVariant.stock === 0 || addToCart.isPending}
+                onClick={() =>
+                  selectedVariant &&
+                  addToCart.mutate({ variantId: selectedVariant.id, quantity: 1 })
+                }
+              >
+                {addToCart.isPending ? (
+                  <span className="loading loading-spinner loading-xs" />
+                ) : !selectedVariant || selectedVariant.stock === 0 ? (
+                  "Out of stock"
+                ) : addToCart.isSuccess ? (
+                  "Added!"
+                ) : (
+                  "Add to bag"
+                )}
+              </Button>
+              <IconButton
+                icon="favorite"
+                label={inWishlist ? "Remove from wishlist" : "Add to wishlist"}
+                active={inWishlist}
+                filled={inWishlist}
+                size="md"
+                disabled={toggleWishlist.isPending}
+                onClick={() => {
+                  if (!isAuthenticated) {
+                    navigate({ to: "/login" });
+                    return;
+                  }
+                  toggleWishlist.mutate({ productID: entry.id, inWishlist });
+                }}
+              />
+            </div>
             {addToCart.isError && (
               <p className="text-xs text-error">Couldn't add to bag. Please try again.</p>
             )}

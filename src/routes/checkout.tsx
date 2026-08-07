@@ -2,7 +2,6 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { formatPrice } from "@decocms/apps-commerce/sdk/formatPrice";
 import Button from "~/components/ui/Button";
-import Image from "~/components/ui/Image";
 import { useCart } from "~/platform/cart";
 import { useAddresses, type Address } from "~/platform/address";
 import { useCheckout } from "~/platform/orders";
@@ -274,13 +273,12 @@ function CheckoutPage() {
             {cart.items.map((item) => (
               <li key={item.itemId} className="flex gap-3">
                 {item.image ? (
-                  <Image
+                  <img
                     src={item.image}
                     alt={item.title}
-                    width={48}
-                    height={48}
-                    className="size-12 rounded-sm object-cover"
+                    referrerPolicy="no-referrer"
                     loading="lazy"
+                    className="size-12 rounded-sm object-cover"
                   />
                 ) : (
                   <div className="size-12 rounded-sm bg-glass" aria-hidden="true" />

@@ -1,7 +1,10 @@
 import { useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import type { CatalogEntry } from "~/platform/catalog";
+import { useToggleWishlist, useWishlist } from "~/platform/wishlist";
+import { useUser } from "~/platform/user";
 import Tag from "~/components/ui/Tag";
+import IconButton from "~/components/ui/IconButton";
 
 /**
  * Product tile for the fragrance catalog (Home rails/grid, PDP "you might
@@ -11,6 +14,13 @@ import Tag from "~/components/ui/Tag";
  */
 export default function ProductTile({ entry }: { entry: CatalogEntry }) {
   const [imgFailed, setImgFailed] = useState(false);
+  const { isInWishlist } = useWishlist();
+  const toggle = useToggleWishlist();
+  const { isAuthenticated } = useUser();
+  const navigate = useNavigate();
+
+  const inWishlist = isInWishlist(entry.id);
+  const pending = toggle.isPending && toggle.variables?.productID === entry.id;
 
   return (
     <Link to={`/${entry.slug}`} preload="intent" className="group flex shrink-0 flex-col gap-3">
@@ -36,6 +46,24 @@ export default function ProductTile({ entry }: { entry: CatalogEntry }) {
             <Tag tone="light">{entry.tag}</Tag>
           </div>
         )}
+        <div className="absolute top-3 right-3">
+          <IconButton
+            icon="favorite"
+            label={inWishlist ? "Remove from wishlist" : "Add to wishlist"}
+            active={inWishlist}
+            filled={inWishlist}
+            disabled={pending}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (!isAuthenticated) {
+                navigate({ to: "/login" });
+                return;
+              }
+              toggle.mutate({ productID: entry.id, inWishlist });
+            }}
+          />
+        </div>
       </div>
       <div>
         <div className="font-display text-base font-medium text-ink">{entry.name}</div>

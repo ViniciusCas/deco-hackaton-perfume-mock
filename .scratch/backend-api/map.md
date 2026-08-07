@@ -175,7 +175,36 @@ accessed from a second Worker via its own Hyperdrive binding and its own
   `$.tsx`'s size selector now reflects real variants (out-of-stock sizes
   disabled) and its "Add to bag" button calls `useAddToCart` for real, with
   pending/success/error states. Verified locally: real button renders (not
-  disabled), real size options render with real variant ids.
+  disabled), real size options render with real variant ids. Deployed
+  (Version `90ef3d3b`); also shrank the PDP hero image (was hardcoded to a
+  broken path, silently falling back to a letter placeholder — now uses the
+  real product photo, capped to `max-w-sm`) and surfaced description,
+  rating/votes, release year, and gender on the PDP in the same pass.
+- **Fixed: wishlist was completely unreachable from the real site.** Found
+  the same way as the cart bug — same root cause pattern, same blast radius.
+  `WishlistButton` (correctly wired to `useToggleWishlist`) only existed
+  inside `ProductActions.tsx`/`ProductCard.tsx`, both on the same dead
+  CMS-section tree as the broken cart button. `ProductTile` — the component
+  actually rendered on `/`, `/fragrance`, and the PDP's "related
+  products" — had no wishlist affordance at all. The mobile menu linked to
+  `/wishlist`, but no such route existed (fell through to the catch-all's
+  "not found" state). Fixed: added a heart-icon toggle to `ProductTile`
+  (top-right overlay) and to `$.tsx`'s PDP actions row; built a real
+  `src/routes/wishlist.tsx` (auth-gated like `/account`, cross-references
+  `useWishlist()`'s `productIds` against `useCatalog()` to render full
+  product tiles). `CatalogEntry` gained an `id` field (the real DB uuid,
+  distinct from `slug`) since wishlist operates on product id, not slug.
+- **Fixed: PDP price was static** — showed `entry.price` (the base catalog
+  price) regardless of which size was selected, never reading
+  `selectedVariant.price`. Now correctly reflects the selected variant.
+- **Fixed: cart/checkout images weren't rendering.** `Minicart.tsx`,
+  `cart.tsx`, and `checkout.tsx` used the wrapped `Image` component, which
+  routes through an external `decoims.com` CDN proxy of unverified
+  reliability for this now-identity-decoupled project (see the
+  remove-deco-identity map). `ProductTile` — already proven working — uses
+  a plain `<img>` with the real source URL directly; all three cart-adjacent
+  views switched to match. Verified locally: real `fimgs.net` URLs render
+  directly in cart/checkout markup, matching `ProductTile`'s working pattern.
 
 ## Not yet specified
 

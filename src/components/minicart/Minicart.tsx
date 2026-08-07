@@ -1,7 +1,6 @@
 import { formatPrice } from "@decocms/apps-commerce/sdk/formatPrice";
 import { Link } from "@tanstack/react-router";
 import { clx } from "~/sdk/clx";
-import Image from "~/components/ui/Image";
 import Icon from "../ui/Icon";
 import Button from "../ui/Button";
 import { MINICART_DRAWER_ID } from "../../constants";
@@ -56,12 +55,11 @@ function CartLine({ item, currency }: { item: CartItem; currency: string }) {
       )}
     >
       {item.image ? (
-        <Image
+        <img
           className="size-16 rounded-sm border border-line object-cover"
           src={item.image}
           alt={item.title}
-          width={64}
-          height={64}
+          referrerPolicy="no-referrer"
           loading="lazy"
         />
       ) : (

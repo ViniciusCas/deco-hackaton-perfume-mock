@@ -13,6 +13,7 @@ type ProductRow = typeof ProductsTable.$inferSelect;
 
 function toCatalogEntry(row: ProductRow): CatalogEntry {
   return {
+    id: row.id,
     slug: row.slug,
     name: row.name,
     brand: row.brand,

@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { formatPrice } from "@decocms/apps-commerce/sdk/formatPrice";
-import Image from "~/components/ui/Image";
 import Icon from "~/components/ui/Icon";
 import Button from "~/components/ui/Button";
 import { useCart, useRemoveCartItem, useUpdateCartItem, type CartItem } from "~/platform/cart";
@@ -52,13 +51,12 @@ function CartLine({ item, currency }: { item: CartItem; currency: string }) {
     >
       <div className="h-32 overflow-hidden rounded-md bg-surface sm:h-40">
         {item.image ? (
-          <Image
+          <img
             src={item.image}
             alt={item.title}
-            width={132}
-            height={160}
-            className="size-full object-cover"
+            referrerPolicy="no-referrer"
             loading="lazy"
+            className="size-full object-cover"
           />
         ) : (
           <div className="size-full bg-glass" aria-hidden="true" />
