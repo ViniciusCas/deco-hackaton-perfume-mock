@@ -3,6 +3,7 @@ import Icon, { type AvailableIcons } from "~/components/ui/Icon";
 import Button from "~/components/ui/Button";
 import ProductTile from "~/components/home/ProductTile";
 import { getHomeCollectionsServerFn } from "~/platform/catalog";
+import { useReveal } from "~/sdk/useReveal";
 
 export const Route = createFileRoute("/")({
   component: HomePage,
@@ -19,6 +20,12 @@ const PERKS: { icon: AvailableIcons; label: string }[] = [
 
 function HomePage() {
   const { arrivals: ARRIVALS, bestSellers: BEST_SELLERS } = Route.useLoaderData();
+
+  const chipsRef = useReveal<HTMLElement>();
+  const arrivalsRef = useReveal<HTMLElement>();
+  const editorialRef = useReveal<HTMLElement>();
+  const bestSellersRef = useReveal<HTMLElement>();
+  const quizRef = useReveal<HTMLElement>();
 
   return (
     <div className="pt-[90px] sm:pt-[110px]">
@@ -61,7 +68,10 @@ function HomePage() {
       </section>
 
       {/* Note chips */}
-      <section className="scrollbar-none flex gap-2 overflow-x-auto px-5 py-6 sm:px-18">
+      <section
+        ref={chipsRef}
+        className="reveal scrollbar-none flex gap-2 overflow-x-auto px-5 py-6 sm:px-18"
+      >
         {NOTE_CHIPS.map((chip) => (
           <span
             key={chip}
@@ -73,7 +83,7 @@ function HomePage() {
       </section>
 
       {/* New arrivals */}
-      <section className="px-5 py-7 sm:px-18 sm:py-14">
+      <section ref={arrivalsRef} className="reveal px-5 py-7 sm:px-18 sm:py-14">
         <div className="mb-4 flex items-end justify-between gap-2 sm:mb-6">
           <h2 className="font-display text-2xl font-normal tracking-(--tracking-display) text-ink sm:text-4xl">
             New arrivals
@@ -95,7 +105,7 @@ function HomePage() {
       </section>
 
       {/* Editorial band */}
-      <section className="bg-rose px-6 py-11 text-black sm:px-18 sm:py-22">
+      <section ref={editorialRef} className="reveal bg-rose px-6 py-11 text-black sm:px-18 sm:py-22">
         <div className="mb-3.5 font-display text-2xs font-medium tracking-(--tracking-label) text-ink uppercase sm:mb-5.5">
           The house
         </div>
@@ -105,7 +115,7 @@ function HomePage() {
       </section>
 
       {/* Best sellers */}
-      <section className="px-5 py-8 sm:px-18 sm:py-19">
+      <section ref={bestSellersRef} className="reveal px-5 py-8 sm:px-18 sm:py-19">
         <h2 className="mb-4 font-display text-2xl font-normal tracking-(--tracking-display) text-ink sm:mb-6 sm:text-4xl">
           Best sellers
         </h2>
@@ -117,7 +127,10 @@ function HomePage() {
       </section>
 
       {/* Quiz banner */}
-      <section className="mx-5 rounded-lg bg-gold-deep/45 px-5.5 py-7 sm:mx-18 sm:px-13 sm:py-16">
+      <section
+        ref={quizRef}
+        className="reveal mx-5 rounded-lg bg-gold-deep/45 px-5.5 py-7 sm:mx-18 sm:px-13 sm:py-16"
+      >
         <h2 className="mb-2 font-display text-xl font-normal text-ink sm:text-3xl">
           Find your signature
         </h2>
