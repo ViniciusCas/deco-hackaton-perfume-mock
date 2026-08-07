@@ -3,6 +3,7 @@ import type { QueryClient } from "@tanstack/react-query";
 import { DecoRootLayout } from "@decocms/tanstack";
 import { getUserServerFn, USER_QUERY_KEY } from "../platform/user";
 import { CATALOG_QUERY_KEY, getCatalogServerFn } from "../platform/catalog";
+import { CART_QUERY_KEY, getCartSsrServerFn } from "../platform/cart";
 import MinicartDrawer from "../components/minicart/MinicartDrawer";
 import Header from "../sections/Header/Header";
 import Footer from "../sections/Footer/Footer";
@@ -38,14 +39,22 @@ const FOOTER_LINKS = [
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   beforeLoad: async ({ context }) => {
-    // Cart is deliberately NOT prefetched here — sillage-api is a separate
-    // origin the client calls directly with a localStorage-held token/cart-
-    // session id, neither of which SSR has access to. Prefetching via a
-    // client-only fetch during SSR would silently create an orphaned cart
-    // row per guest page load. useCart() fetches client-side after
-    // hydration instead. See .scratch/backend-api/issues/06-ssr-token-forwarding.md's
-    // "New fog surfaced" note — guest cart SSR is still unresolved.
     const tasks: Promise<unknown>[] = [];
+    // Cart prefetch only runs when SSR already has *something* to identify
+    // the cart with — a signed-in session cookie or an existing guest
+    // cart-session cookie (see .scratch/backend-api/issues/09-guest-cart-ssr.md).
+    // A brand-new guest (neither cookie present yet) still gets the
+    // post-hydration flash: creating a cart from SSR with no way to hand
+    // its session id back to the client would just orphan it.
+    if (!context.queryClient.getQueryData(CART_QUERY_KEY)) {
+      tasks.push(
+        getCartSsrServerFn()
+          .then((cart) => {
+            if (cart) context.queryClient.setQueryData(CART_QUERY_KEY, cart);
+          })
+          .catch(() => {}),
+      );
+    }
     if (!context.queryClient.getQueryData(USER_QUERY_KEY)) {
       tasks.push(
         getUserServerFn()

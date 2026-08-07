@@ -130,10 +130,31 @@ accessed from a second Worker via its own Hyperdrive binding and its own
   unexposed in the UI even though the API supports it), pick a saved address
   or enter one ad-hoc, inline confirmation built from `POST /v1/orders`'s
   own response (no `GET /orders/:id` needed). Both "Checkout" buttons now
-  link to it. Typechecks and builds clean; **not yet deployed or verified
-  live** — no browser available to click through the flow, and the
-  live-verification approach used for cart/wishlist/address (direct HTTP
-  calls) wasn't run for checkout as part of this ticket.
+  link to it. Deployed (Version `4e5a2eda`) and fully verified live via
+  direct HTTP calls reproducing the exact checkout flow: order placed with
+  ad-hoc shipping fields, cart correctly cleared, `product_variants.stock`
+  correctly decremented in production RDS (60 → 58), order + order-line
+  snapshot correctly persisted, insufficient-stock correctly rejected with
+  the exact error shape the UI expects. All test data cleaned up.
+- **`sillage-api` pushed to GitHub**: `https://github.com/ViniciusCas/sillage-api`
+  (private, branch `master`). Not part of any ticket — done directly on request.
+- [Fix guest cart identity during SSR](issues/09-guest-cart-ssr.md) — guest
+  cart identity moved from `localStorage` to a first-party cookie
+  (`sillage_cart_session`, this website's own origin, not `sillage-api`'s —
+  no third-party-cookie fragility). SSR reads it the same way it already
+  reads the bearer-token cookie (ticket 06) and the root route's cart
+  prefetch is restored, but only when a session/cart-session cookie already
+  exists — a first-time guest still gets the post-hydration flash by design.
+  Along the way: found and fixed a real production-build failure (calling
+  `getRequest()` directly in `beforeLoad` passes `tsc` and `vite dev` but
+  fails `npm run build`'s import-protection check — fixed via a proper
+  `createServerFn`, `getCartSsrServerFn`), and fixed a real, separate,
+  pre-existing bug in `src/router.tsx` (`QueryClient` created at module
+  scope instead of inside `getRouter()`, defeating TanStack Start's
+  per-request isolation on the server) found while investigating what
+  turned out to be a false-alarm data-leak report — see the ticket for the
+  full corrected account. Verified end-to-end locally (Docker Postgres +
+  both dev servers); **not yet deployed**.
 
 ## Not yet specified
 
@@ -143,20 +164,8 @@ accessed from a second Worker via its own Hyperdrive binding and its own
   known website, revisit if/when a real external consumer (mobile app,
   partner) is scoped in. (CORS, previously grouped with this, is no longer
   deferred — see ticket 01's amendment.)
-- Guest cart identity during SSR. A first-time guest has no cart-session id
-  for SSR to forward (that id is only minted client-side, on the browser's
-  first cart write) — the root route's cart prefetch was removed entirely
-  rather than built against a half-working mechanism (ticket 06's answer
-  only solves the *authenticated* SSR case). `useCart()` now fetches
-  client-side only, after hydration; guests briefly see `EMPTY_CART`
-  placeholder data. Not yet a ticket — the likely fix ("just accept the
-  post-hydration flash" vs. some other mechanism) doesn't have a forcing
-  function yet.
-- Verifying the checkout UI live (deploy the website's latest commit +
-  either a real browser or the same direct-HTTP-call approach used for
-  cart/wishlist/address). Not yet done.
-- Pushing `sillage-api` to GitHub — it's deployed to Cloudflare but the
-  local git repo has no remote yet.
+- Deploying the guest-cart-SSR fix (ticket 09) — implemented and verified
+  locally, not yet deployed.
 - Cleaning up the dead legacy wishlist/address cookie-backed code
   (`src/actions/{wishlist,address}/submit.ts`, `src/loaders/wishlist.ts`,
   the wishlist/address halves of `src/loaders/_cookie.ts`, their `setup.ts`

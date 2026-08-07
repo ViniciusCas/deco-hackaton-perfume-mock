@@ -1,18 +1,21 @@
 /**
  * Shared client-side (browser) fetch wrapper for sillage-api. See
- * .scratch/backend-api/issues/07-frontend-cutover.md for the decisions this
- * implements: localStorage for the bearer token and guest cart-session id,
- * a single shared client, `{ data }` / `{ error }` envelope unwrapping into
- * a typed SillageApiError.
+ * .scratch/backend-api/issues/07-frontend-cutover.md for the bearer-token
+ * decisions (localStorage) and .scratch/backend-api/issues/09-guest-cart-ssr.md
+ * for why guest cart identity moved to a first-party cookie instead
+ * (readable by SSR — see src/db/sillage-api.ts's cartSessionHeader —
+ * unlike localStorage, closing the guest-cart-prefetch gap ticket 07 left).
  *
  * Server-side (SSR) calls do NOT go through this module — see
- * src/db/sillage-api.ts, which forwards the browser's own session cookie
- * instead of a stored token (no localStorage access during SSR).
+ * src/db/sillage-api.ts, which forwards the browser's own cookies directly
+ * instead of reading storage (no localStorage access during SSR anyway).
  */
+export const CART_SESSION_COOKIE = "sillage_cart_session";
+const CART_SESSION_COOKIE_MAX_AGE = 60 * 60 * 24 * 365; // 1 year
+
 const BASE_URL = import.meta.env.VITE_SILLAGE_API_URL ?? "https://sillage-api.sillage-hackaton.workers.dev";
 
 const AUTH_TOKEN_KEY = "sillage_auth_token";
-const CART_SESSION_KEY = "sillage_cart_session";
 
 function readStorage(key: string): string | null {
   if (typeof window === "undefined") return null;
@@ -28,8 +31,21 @@ function writeStorage(key: string, value: string | null) {
 export const getStoredAuthToken = () => readStorage(AUTH_TOKEN_KEY);
 export const setStoredAuthToken = (token: string | null) => writeStorage(AUTH_TOKEN_KEY, token);
 
-export const getStoredCartSession = () => readStorage(CART_SESSION_KEY);
-export const setStoredCartSession = (token: string | null) => writeStorage(CART_SESSION_KEY, token);
+function readCookie(name: string): string | null {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.split(/;\s*/).find((c) => c.startsWith(`${name}=`));
+  return match ? decodeURIComponent(match.slice(name.length + 1)) : null;
+}
+
+function writeCookie(name: string, value: string, maxAge: number) {
+  if (typeof document === "undefined") return;
+  document.cookie = `${name}=${encodeURIComponent(value)}; Path=/; Max-Age=${maxAge}; SameSite=Lax`;
+}
+
+export const getStoredCartSession = () => readCookie(CART_SESSION_COOKIE);
+export const setStoredCartSession = (token: string | null) => {
+  if (token) writeCookie(CART_SESSION_COOKIE, token, CART_SESSION_COOKIE_MAX_AGE);
+};
 
 export class SillageApiError extends Error {
   code: string;
