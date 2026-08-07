@@ -1,7 +1,6 @@
 import { createRootRouteWithContext } from "@tanstack/react-router";
 import type { QueryClient } from "@tanstack/react-query";
 import { DecoRootLayout } from "@decocms/tanstack";
-import { CART_QUERY_KEY, getCartServerFn } from "../platform/cart";
 import { getUserServerFn, USER_QUERY_KEY } from "../platform/user";
 import { CATALOG_QUERY_KEY, getCatalogServerFn } from "../platform/catalog";
 import MinicartDrawer from "../components/minicart/MinicartDrawer";
@@ -39,14 +38,14 @@ const FOOTER_LINKS = [
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   beforeLoad: async ({ context }) => {
+    // Cart is deliberately NOT prefetched here — sillage-api is a separate
+    // origin the client calls directly with a localStorage-held token/cart-
+    // session id, neither of which SSR has access to. Prefetching via a
+    // client-only fetch during SSR would silently create an orphaned cart
+    // row per guest page load. useCart() fetches client-side after
+    // hydration instead. See .scratch/backend-api/issues/06-ssr-token-forwarding.md's
+    // "New fog surfaced" note — guest cart SSR is still unresolved.
     const tasks: Promise<unknown>[] = [];
-    if (!context.queryClient.getQueryData(CART_QUERY_KEY)) {
-      tasks.push(
-        getCartServerFn()
-          .then((cart) => context.queryClient.setQueryData(CART_QUERY_KEY, cart))
-          .catch(() => {}),
-      );
-    }
     if (!context.queryClient.getQueryData(USER_QUERY_KEY)) {
       tasks.push(
         getUserServerFn()

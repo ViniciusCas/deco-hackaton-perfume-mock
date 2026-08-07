@@ -15,7 +15,7 @@ const LABEL_CLASS = "font-display text-2xs font-medium tracking-(--tracking-labe
 function QuantityStepper({ item }: { item: CartItem }) {
   const update = useUpdateCartItem();
   const set = (quantity: number) =>
-    update.mutate({ lineId: item.lineId, quantity: Math.max(1, quantity) });
+    update.mutate({ itemId: item.itemId, quantity: Math.max(1, quantity) });
   return (
     <div className="flex items-center overflow-hidden rounded-sm border border-line">
       <button
@@ -42,7 +42,7 @@ function QuantityStepper({ item }: { item: CartItem }) {
 
 function CartLine({ item, currency }: { item: CartItem; currency: string }) {
   const remove = useRemoveCartItem();
-  const removing = remove.isPending && remove.variables?.lineId === item.lineId;
+  const removing = remove.isPending && remove.variables?.itemId === item.itemId;
 
   return (
     <div
@@ -53,8 +53,8 @@ function CartLine({ item, currency }: { item: CartItem; currency: string }) {
       <div className="h-32 overflow-hidden rounded-md bg-surface sm:h-40">
         {item.image ? (
           <Image
-            src={item.image.url}
-            alt={item.image.alt ?? item.title}
+            src={item.image}
+            alt={item.title}
             width={132}
             height={160}
             className="size-full object-cover"
@@ -66,10 +66,7 @@ function CartLine({ item, currency }: { item: CartItem; currency: string }) {
       </div>
 
       <div className="flex flex-col pt-1">
-        <a
-          href={`/${item.productHandle}`}
-          className="font-display text-lg text-ink hover:underline"
-        >
+        <a href={`/${item.slug}`} className="font-display text-lg text-ink hover:underline">
           {item.title}
         </a>
         <div className="mt-1 text-sm text-muted">{formatPrice(item.price.amount, currency)}</div>
@@ -79,7 +76,7 @@ function CartLine({ item, currency }: { item: CartItem; currency: string }) {
             type="button"
             aria-label="Remove item"
             disabled={removing}
-            onClick={() => remove.mutate({ lineId: item.lineId })}
+            onClick={() => remove.mutate({ itemId: item.itemId })}
             className={`${LABEL_CLASS} text-muted hover:text-ink`}
           >
             Remove
@@ -184,7 +181,7 @@ function CartPage() {
           <div>
             <div className="border-t border-line">
               {cart.items.map((item) => (
-                <CartLine key={item.lineId} item={item} currency={currency} />
+                <CartLine key={item.itemId} item={item} currency={currency} />
               ))}
             </div>
 
@@ -239,20 +236,11 @@ function CartPage() {
             </div>
             <p className="mb-6 text-xs text-muted">Taxes and fees calculated at checkout.</p>
 
-            {cart.checkoutUrl ? (
-              // External Shopify checkout URL — a plain anchor, not the
-              // router's <Link>, which only handles in-app routes.
-              <a
-                href={cart.checkoutUrl}
-                className="tap-scale flex h-10 w-full items-center justify-center rounded-sm bg-rose font-display text-sm font-medium tracking-(--tracking-label) text-black uppercase transition-colors duration-(--duration-fast) hover:bg-rose-deep hover:text-white"
-              >
-                Checkout
-              </a>
-            ) : (
-              <Button type="button" variant="solid" size="md" disabled className="w-full">
-                Checkout
-              </Button>
-            )}
+            {/* Checkout (POST /v1/orders on sillage-api) has no frontend flow
+                yet — still fog, see .scratch/backend-api/issues/07-frontend-cutover.md. */}
+            <Button type="button" variant="solid" size="md" disabled className="w-full">
+              Checkout
+            </Button>
 
             <div className="mt-5 flex gap-2">
               <input

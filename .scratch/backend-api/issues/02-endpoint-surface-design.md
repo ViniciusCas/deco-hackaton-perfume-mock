@@ -38,7 +38,7 @@ holding an opaque cart session id. A request with neither gets a cart
 created server-side, whose session id comes back in the response body for
 the client to store (e.g. `localStorage`) and echo on subsequent calls.
 
-- `GET /cart` → `{ id, sessionToken, items: [{ itemId, variantId, productId, title, size, image?, price: {amount,currencyCode}, quantity }], subtotal, total, totalQuantity }`. `total` equals `subtotal` for now — no discounts/shipping/tax exist yet. No `checkoutUrl` field — checkout is `POST /orders`, not a redirect.
+- `GET /cart` → `{ id, sessionToken, items: [{ itemId, variantId, productId, slug, title, size, image?, price: {amount,currencyCode}, quantity }], subtotal, total, totalQuantity }`. `total` equals `subtotal` for now — no discounts/shipping/tax exist yet. No `checkoutUrl` field — checkout is `POST /orders`, not a redirect. (**Amendment, caught during [ticket 07](07-frontend-cutover.md)'s implementation**: `slug` was missing from this original design — the frontend's product-detail link needs it, same field the old Shopify shape called `productHandle`. Added to `sillage-api`'s response.)
 - `POST /cart/items { variantId, quantity? }` → upsert (existing variant bumps quantity per the schema's `unique(cartId, variantId)`), returns the full cart.
 - `PATCH /cart/items/:itemId { quantity }` → returns the full cart.
 - `DELETE /cart/items/:itemId` → returns the full cart.

@@ -7,9 +7,3 @@ export {
   useRemoveCartItem,
   useUpdateCartItem,
 } from "./cart.hooks";
-export {
-  addItemServerFn,
-  getCartServerFn,
-  removeItemServerFn,
-  updateItemQuantityServerFn,
-} from "./cart.actions";

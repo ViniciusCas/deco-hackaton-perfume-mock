@@ -102,6 +102,22 @@ accessed from a second Worker via its own Hyperdrive binding and its own
   Both repos typecheck clean; `sillage-api` verified with `wrangler deploy --dry-run`
   only — nothing deployed live, nothing on the frontend calls it yet.
 
+- [Decide how SSR forwards a token to sillage-api, and fix bearer-token validation](issues/06-ssr-token-forwarding.md) —
+  SSR forwards the browser's own already-signed session cookie (via Better
+  Auth's `getSessionCookie` helper) verbatim as the bearer token — no new
+  minting mechanism. Fixed a real bug in `sillage-api`'s already-shipped
+  validation: incoming tokens are `<rawToken>.<signature>`, not the bare
+  `session.token` value; the DB lookup now strips the signature first, no
+  HMAC verification (the DB exact-match is the real access boundary).
+- [Cut the frontend over to sillage-api](issues/07-frontend-cutover.md) —
+  `src/platform/{cart,wishlist,address}` now call `sillage-api` directly
+  (`sillageApiFetch`, new shared client) instead of Shopify/`invoke.site.*`;
+  a new `src/platform/orders` module adds checkout (`useCheckout`) with no
+  consuming UI yet. Bearer token captured from Better Auth's `set-auth-token`
+  header into `localStorage` on sign-in/sign-up. Root route's SSR cart
+  prefetch removed entirely — see fog below. Both repos typecheck clean;
+  not exercised against a live `sillage-api` (still undeployed).
+
 ## Not yet specified
 
 - OpenAPI/schema documentation for the new routes — not sharp until the
@@ -110,17 +126,28 @@ accessed from a second Worker via its own Hyperdrive binding and its own
   known website, revisit if/when a real external consumer (mobile app,
   partner) is scoped in. (CORS, previously grouped with this, is no longer
   deferred — see ticket 01's amendment.)
-- The actual frontend cutover — pointing `cart.hooks.ts`, `wishlist.hooks.ts`,
-  `address.hooks.ts`, and a new checkout flow at `sillage-api` instead of
-  the Shopify/`invoke.site.*` plumbing, and forwarding Better Auth's
-  `set-auth-token` header from `user.actions.ts` to the client so a bearer
-  token exists to send in the first place. This is the map's actual
-  Destination and isn't done yet — ticket 05 only scaffolded the API side.
-  Not yet ticketed; likely the next ticket once the SSR-token fog item above
-  is resolved (the cutover can't be fully speced until that's settled).
-- Deploying `sillage-api` for real (Cloudflare + pushing the repo to GitHub) —
-  straightforward once there's frontend code ready to actually call it;
-  no urgency to deploy an API nothing consumes yet.
+- Guest cart identity during SSR. A first-time guest has no cart-session id
+  for SSR to forward (that id is only minted client-side, on the browser's
+  first cart write) — the root route's cart prefetch was removed entirely
+  rather than built against a half-working mechanism (ticket 06's answer
+  only solves the *authenticated* SSR case). `useCart()` now fetches
+  client-side only, after hydration; guests briefly see `EMPTY_CART`
+  placeholder data. Not yet a ticket — the likely fix ("just accept the
+  post-hydration flash" vs. some other mechanism) doesn't have a forcing
+  function yet.
+- A real checkout UI. `useCheckout()` (orders module) exists and is fully
+  wired to `POST /v1/orders`, but nothing calls it — both "Checkout" buttons
+  (cart page, minicart) render permanently disabled. This is real,
+  user-visible unfinished work, not a nice-to-have.
+- Deploying `sillage-api` for real (Cloudflare + pushing the repo to GitHub).
+  The frontend code is now ready and waiting on this — deploying is what
+  would actually let the cutover be exercised/verified end-to-end.
+- Cleaning up the dead legacy wishlist/address cookie-backed code
+  (`src/actions/{wishlist,address}/submit.ts`, `src/loaders/wishlist.ts`,
+  the wishlist/address halves of `src/loaders/_cookie.ts`, their `setup.ts`
+  registrations) — fixed to keep typechecking during the cutover but not
+  removed, since deleting Deco block registrations without being able to
+  verify the block-generation build step felt too risky to do blind.
 
 ## Out of scope
 

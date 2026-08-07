@@ -1,10 +1,5 @@
 import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  addItemServerFn,
-  getCartServerFn,
-  removeItemServerFn,
-  updateItemQuantityServerFn,
-} from "./cart.actions";
+import { sillageApiFetch } from "~/platform/sillage-api-client";
 import { type CartItem, EMPTY_CART, type CartState } from "./cart.types";
 
 export const CART_QUERY_KEY = ["cart"] as const;
@@ -52,7 +47,7 @@ function rollbackCart(qc: QueryClient, ctx: OptimisticContext | undefined) {
 export function useCart() {
   const query = useQuery({
     queryKey: CART_QUERY_KEY,
-    queryFn: () => getCartServerFn(),
+    queryFn: () => sillageApiFetch<CartState>("/v1/cart"),
     staleTime: 60_000,
     placeholderData: EMPTY_CART,
   });
@@ -73,8 +68,11 @@ export function useAddToCart() {
     // surface a global "cart busy" indicator.
     scope: { id: "cart" },
     mutationKey: ["cart", "add"],
-    mutationFn: (input: { merchandiseId: string; quantity?: number }) =>
-      addItemServerFn({ data: input }),
+    mutationFn: (input: { variantId: string; quantity?: number }) =>
+      sillageApiFetch<CartState>("/v1/cart/items", {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
     // NOTE(DECO-5278): optimistic add is deferred — building an optimistic
     // line needs a product snapshot (title/image/price). It should come from a
     // neutral `productToCartItem` mapping over commerce types, tracked as a
@@ -90,11 +88,14 @@ export function useUpdateCartItem() {
   return useMutation({
     scope: { id: "cart" },
     mutationKey: ["cart", "update"],
-    mutationFn: (input: { lineId: string; quantity: number }) =>
-      updateItemQuantityServerFn({ data: input }),
-    onMutate: ({ lineId, quantity }) =>
+    mutationFn: (input: { itemId: string; quantity: number }) =>
+      sillageApiFetch<CartState>(`/v1/cart/items/${input.itemId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ quantity: input.quantity }),
+      }),
+    onMutate: ({ itemId, quantity }) =>
       optimisticCartUpdate(qc, (items) =>
-        items.map((i) => (i.lineId === lineId ? { ...i, quantity: Math.max(1, quantity) } : i)),
+        items.map((i) => (i.itemId === itemId ? { ...i, quantity: Math.max(1, quantity) } : i)),
       ),
     onError: (_err, _input, ctx) => rollbackCart(qc, ctx),
     onSuccess: (cart: CartState) => {
@@ -108,9 +109,10 @@ export function useRemoveCartItem() {
   return useMutation({
     scope: { id: "cart" },
     mutationKey: ["cart", "remove"],
-    mutationFn: (input: { lineId: string }) => removeItemServerFn({ data: input }),
-    onMutate: ({ lineId }) =>
-      optimisticCartUpdate(qc, (items) => items.filter((i) => i.lineId !== lineId)),
+    mutationFn: (input: { itemId: string }) =>
+      sillageApiFetch<CartState>(`/v1/cart/items/${input.itemId}`, { method: "DELETE" }),
+    onMutate: ({ itemId }) =>
+      optimisticCartUpdate(qc, (items) => items.filter((i) => i.itemId !== itemId)),
     onError: (_err, _input, ctx) => rollbackCart(qc, ctx),
     onSuccess: (cart: CartState) => {
       qc.setQueryData(CART_QUERY_KEY, cart);

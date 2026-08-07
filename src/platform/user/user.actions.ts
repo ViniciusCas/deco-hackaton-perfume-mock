@@ -12,6 +12,18 @@ interface AuthUser {
   familyName?: string | null;
 }
 
+export interface AuthResult {
+  user: Person | null;
+  /**
+   * The bearer plugin's `set-auth-token` value — sillage-api is a separate
+   * origin (.scratch/backend-api map), so it can't read this repo's session
+   * cookie; the client holds this in localStorage and sends it as
+   * `Authorization: Bearer <authToken>` on direct client-side calls to
+   * sillage-api. See .scratch/backend-api/issues/07-frontend-cutover.md.
+   */
+  authToken: string | null;
+}
+
 function toPerson(u: AuthUser | null | undefined): Person | null {
   if (!u) return null;
   return {
@@ -53,7 +65,7 @@ export const getUserServerFn = createServerFn({ method: "GET" }).handler(
 
 export const signInServerFn = createServerFn({ method: "POST" })
   .inputValidator((input: { email: string; password: string }) => input)
-  .handler(async (ctx): Promise<Person | null> => {
+  .handler(async (ctx): Promise<AuthResult> => {
     const auth = getAuth();
     const { headers, response } = await rethrowAsPlainError(() =>
       auth.api.signInEmail({
@@ -62,14 +74,17 @@ export const signInServerFn = createServerFn({ method: "POST" })
       }),
     );
     forwardSetCookie(headers);
-    return toPerson(response?.user as AuthUser | null | undefined);
+    return {
+      user: toPerson(response?.user as AuthUser | null | undefined),
+      authToken: headers.get("set-auth-token"),
+    };
   });
 
 export const signUpServerFn = createServerFn({ method: "POST" })
   .inputValidator(
     (input: { email: string; password: string; firstName?: string; lastName?: string }) => input,
   )
-  .handler(async (ctx): Promise<Person | null> => {
+  .handler(async (ctx): Promise<AuthResult> => {
     const emailError = validateEmail(ctx.data.email);
     if (emailError) throw new Error(emailError);
     const passwordError = validatePassword(ctx.data.password);
@@ -92,7 +107,10 @@ export const signUpServerFn = createServerFn({ method: "POST" })
       }),
     );
     forwardSetCookie(headers);
-    return toPerson(response?.user as AuthUser | null | undefined);
+    return {
+      user: toPerson(response?.user as AuthUser | null | undefined),
+      authToken: headers.get("set-auth-token"),
+    };
   });
 
 export const signOutServerFn = createServerFn({ method: "POST" }).handler(

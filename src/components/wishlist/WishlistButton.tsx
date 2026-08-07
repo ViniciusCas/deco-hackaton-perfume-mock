@@ -13,7 +13,6 @@ interface Props {
 
 function WishlistButton({ item, variant = "full" }: Props) {
   const productID = (item as { item_id: string }).item_id;
-  const productGroupID = item.item_group_id ?? "";
 
   const { isInWishlist } = useWishlist();
   const toggle = useToggleWishlist();
@@ -33,7 +32,7 @@ function WishlistButton({ item, variant = "full" }: Props) {
       navigate({ to: "/login" });
       return;
     }
-    toggle.mutate({ productID, productGroupID });
+    toggle.mutate({ productID, inWishlist });
   };
 
   const label = inWishlist ? "Remove from wishlist" : "Add to wishlist";
