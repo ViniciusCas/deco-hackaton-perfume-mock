@@ -12,8 +12,17 @@
 	// Tail-worker observability (Strategy B in the original deco template)
 	// pointed at deco-otel-tail, a tail worker that lives in deco's own
 	// Cloudflare account and requires the paid Workers plan — not usable from
-	// an independent account. Removed. Add your own tail_consumers here if
-	// you stand up equivalent error-tail monitoring later.
+	// an independent account. Removed.
+	//
+	// Re-added below for a different purpose: ticket 08's decided
+	// observability backbone for the DiscoveryAgent Durable Object
+	// specifically (see discovery-agent-tail/ and
+	// sales-agent/.scratch/discovery-agent-architecture/build-plan.md Phase
+	// 5/7) — this Worker's own `instrumentWorker` pipeline never reaches
+	// code running inside a Durable Object, confirmed by reading its source
+	// (otel.ts), so this is a separate, necessary mechanism, not a
+	// duplicate of the old deco-otel-tail setup above.
+	"tail_consumers": [{ "service": "sillage-discovery-tail" }],
 	// Worker version (build SHA / deployment id) — surfaced as
 	// `service.version` on every span / log line by `instrumentWorker`.
 	"version_metadata": {

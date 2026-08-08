@@ -80,6 +80,8 @@ export interface TurnPromptState {
   rejectedProductLabels: string[];
   candidateProductLabels: string[];
   conversationHistory: { speaker: string; content: string }[];
+  /** Ticket 03's wishlist signal — null for guests or when unavailable. */
+  wishlistSummary?: string | null;
 }
 
 /** Ported from _render_turn_prompt (main.py:379-423) — same structure,
@@ -103,6 +105,10 @@ export function renderTurnPrompt(state: TurnPromptState): string {
   }
 
   lines.push(`Shopper's original request: ${state.initialRequest}`);
+
+  if (state.wishlistSummary) {
+    lines.push(state.wishlistSummary);
+  }
 
   if (state.roundSummaries.length > 0) {
     lines.push("Summary of earlier rounds (do not repeat rejected picks):");

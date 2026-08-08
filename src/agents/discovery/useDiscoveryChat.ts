@@ -1,7 +1,11 @@
 import { useMemo } from "react";
 import { useAgent } from "agents/react";
 import { useUser } from "~/platform/user";
-import { getStoredCartSession, setStoredCartSession } from "~/platform/sillage-api-client";
+import {
+  getStoredAuthToken,
+  getStoredCartSession,
+  setStoredCartSession,
+} from "~/platform/sillage-api-client";
 import type { DiscoveryAgent } from "./agent";
 import type { DiscoveryAgentState } from "./state";
 
@@ -42,10 +46,19 @@ export function useDiscoveryChat() {
     return user?.["@id"] ?? resolveGuestSessionId();
   }, [isLoading, user]);
 
+  // Ticket 03's wishlist signal (agent.ts's onConnect) needs a bearer token
+  // to call sillage-api's auth-gated /v1/wishlist on the shopper's behalf.
+  // Reuses the SAME stored token this app's other direct client-to-
+  // sillage-api calls already send (sillage-api-client.ts's own doc
+  // comment) — not a new credential path. Absent for guests, which is
+  // expected (wishlist is a logged-in-only signal, per ticket 03).
+  const authToken = getStoredAuthToken();
+
   const agent = useAgent<DiscoveryAgent, DiscoveryAgentState>({
     agent: "discovery-agent",
     name: identity ?? "pending",
     startClosed: !identity,
+    query: { authToken: authToken ?? "" },
   });
 
   return { agent, connecting: !identity };

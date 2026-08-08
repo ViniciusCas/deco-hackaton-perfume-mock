@@ -1,5 +1,5 @@
-import { Agent, callable, type StreamingResponse } from "agents";
-import { fetchProductsByIds } from "./catalog-tool";
+import { Agent, callable, type Connection, type ConnectionContext, type StreamingResponse } from "agents";
+import { fetchProductsByIds, fetchWishlistSummary } from "./catalog-tool";
 import {
   ConversationStore,
   INITIAL_DISCOVERY_AGENT_STATE,
@@ -56,9 +56,23 @@ export class DiscoveryAgent extends Agent<Env, DiscoveryAgentState> {
 
   private store!: ConversationStore;
 
+  /** Ticket 03's wishlist signal — resolved once per connection (not per
+   * turn, this is ambient context) from the bearer token
+   * useDiscoveryChat.ts passes as a connection query param. Stays null for
+   * guests (no token) or if the fetch fails; either way the turn prompt
+   * simply omits the line rather than blocking the conversation on it. */
+  private wishlistSummary: string | null = null;
+
   onStart(): void {
     this.store = new ConversationStore(this.sql.bind(this));
     this.store.ensureTables();
+  }
+
+  async onConnect(connection: Connection, ctx: ConnectionContext): Promise<void> {
+    const authToken = new URL(ctx.request.url).searchParams.get("authToken");
+    if (authToken) {
+      this.wishlistSummary = await fetchWishlistSummary(authToken).catch(() => null);
+    }
   }
 
   @callable()
@@ -100,6 +114,7 @@ export class DiscoveryAgent extends Agent<Env, DiscoveryAgentState> {
         rejectedProductLabels: this.store.rejectedLabels(),
         candidateProductLabels: this.store.candidateLabels(),
         conversationHistory: this.store.historyForRound(this.state.roundCount),
+        wishlistSummary: this.wishlistSummary,
       });
 
       const result = await this.generateAndApplyTurn(promptText);
@@ -158,6 +173,7 @@ export class DiscoveryAgent extends Agent<Env, DiscoveryAgentState> {
         rejectedProductLabels: this.store.rejectedLabels(),
         candidateProductLabels: this.store.candidateLabels(),
         conversationHistory: this.store.historyForRound(this.state.roundCount),
+        wishlistSummary: this.wishlistSummary,
       });
       const result = await this.generateAndApplyTurn(promptText);
       stream.end(result);

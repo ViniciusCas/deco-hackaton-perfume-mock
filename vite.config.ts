@@ -22,7 +22,14 @@ export default defineConfig({
     // src/agents/discovery/agent.ts. Must run before other transforms see
     // that code.
     ...agentsVitePlugin(),
-    cloudflare({ viteEnvironment: { name: "ssr" } }),
+    cloudflare({
+      viteEnvironment: { name: "ssr" },
+      // Ticket 08's Tail Worker (sales-agent/.scratch/discovery-agent-architecture's
+      // build-plan.md Phase 5/7) — runs alongside the main worker in local
+      // dev via Miniflare's own tail-event simulation, so `discovery-tail:*`
+      // console output shows up in this same `npm run dev` process.
+      auxiliaryWorkers: [{ configPath: "./discovery-agent-tail/wrangler.jsonc" }],
+    }),
     tanstackStart({ server: { entry: "server" } }),
     react({
       babel: {

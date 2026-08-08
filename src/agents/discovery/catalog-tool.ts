@@ -77,6 +77,34 @@ export async function fetchProductsByIds(ids: string[]): Promise<SillageProductR
   return body.data?.items ?? [];
 }
 
+interface WishlistResponse {
+  data?: { productIds: string[] };
+}
+
+/**
+ * Ticket 03's "wishlist/order history as a discovery signal" — the order
+ * half doesn't exist yet (sillage-api has checkout only, no order-history
+ * list endpoint, per orders.hooks.ts's own comment and ticket 02's already
+ * documented gap), so this covers wishlist only, a real and deliberate
+ * scope narrowing, not an oversight. Called once per connection (agent.ts's
+ * onConnect), not per turn — this is ambient context, not something the
+ * model decides to query.
+ */
+export async function fetchWishlistSummary(authToken: string): Promise<string | null> {
+  const res = await fetch(`${SILLAGE_API_BASE_URL}/v1/wishlist`, {
+    headers: { Authorization: `Bearer ${authToken}` },
+  });
+  const body = (await res.json().catch(() => ({}))) as WishlistResponse;
+  const productIds = body.data?.productIds ?? [];
+  if (productIds.length === 0) return null;
+
+  const products = await fetchProductsByIds(productIds);
+  if (products.length === 0) return null;
+
+  const items = products.slice(0, 5).map((p) => `${p.name} (${p.family})`).join(", ");
+  return `This shopper has previously favorited: ${items}.`;
+}
+
 function matchesClientSideFilters(
   row: SillageProductRow,
   filters: { search?: string; family?: string[]; brand?: string[]; priceMin?: number; priceMax?: number },
