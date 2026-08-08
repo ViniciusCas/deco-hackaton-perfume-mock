@@ -37,12 +37,10 @@ export interface ValidateTurnInput {
 const ok: ValidationResult = { ok: true };
 
 /**
- * TODO(phase-3): the "tool result line" / "id=<value>" phrasing below
- * mirrors CrewAI's text-formatted tool output convention from the Python
- * original. The AI SDK's typed `execute()` (Phase 3) may return structured
- * data instead of a formatted text line — once that shape is decided,
- * revisit this wording so it matches how labels are actually presented to
- * the model, rather than assuming the old phrasing still applies verbatim.
+ * Resolved by Phase 3 (catalog-tool.ts): the tool returns structured JSON
+ * — `{ label, name, brand, family, price, rating }[]` — not a formatted
+ * text line, so error messages below just say "the real label the tool
+ * returned" rather than referencing any specific text convention.
  */
 export function validateTurn({
   data,

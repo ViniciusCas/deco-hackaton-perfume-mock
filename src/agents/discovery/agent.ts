@@ -10,10 +10,11 @@ import {
  * sales-agent/.scratch/discovery-agent-architecture/build-plan.md.
  *
  * Phase 1 proved the routing/binding/decorator plumbing works (`ping`,
- * still here for that same verification). Phase 2 adds the real state
+ * still here for that same verification). Phase 2 added the real state
  * model — `this.state` for small live scalars, `this.sql` (via
- * `ConversationStore`) for growing conversation data. Turn-generation
- * logic (submitTurn) lands in Phase 4, once Phase 3's catalog tool exists.
+ * `ConversationStore`) for growing conversation data. Phase 3 added the
+ * catalog tool (catalog-tool.ts). Turn-generation logic (submitTurn),
+ * wiring both together, lands in Phase 4.
  */
 
 // Env bindings this Agent needs. Extend as later phases add DB/API access.
