@@ -3,6 +3,8 @@ import { Link } from "@tanstack/react-router";
 import Button from "~/components/ui/Button";
 import { useDiscoveryChat } from "~/agents/discovery/useDiscoveryChat";
 import type { TurnResult } from "~/agents/discovery/agent";
+import { fetchProductVariants } from "~/platform/catalog/products.hooks";
+import { useAddToCart } from "~/platform/cart";
 
 /**
  * Discovery-chat UI — the real Agent behind the same two-column visual
@@ -72,8 +74,28 @@ export default function DiscoveryChat() {
   const [busy, setBusy] = useState(false);
   const [recommendation, setRecommendation] = useState<RecommendationTurn | null>(null);
   const [acceptedSet, setAcceptedSet] = useState<RecommendedProduct[] | null>(null);
+  const [addingSlug, setAddingSlug] = useState<string | null>(null);
+  const [addedSlugs, setAddedSlugs] = useState<Set<string>>(new Set());
   const primed = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const addToCart = useAddToCart();
+
+  // Per-item "+" on a recommended product — resolves a default variant
+  // (in-stock preferred, same fallback PDP uses) and adds it directly,
+  // independent of the whole-set accept/reject flow below.
+  async function addOne(product: RecommendedProduct) {
+    if (addingSlug) return;
+    setAddingSlug(product.slug);
+    try {
+      const variants = await fetchProductVariants(product.slug);
+      const variantId = variants.find((v) => v.stock > 0)?.id ?? variants[0]?.id;
+      if (!variantId) return;
+      await addToCart.mutateAsync({ variantId });
+      setAddedSlugs((prev) => new Set(prev).add(product.slug));
+    } finally {
+      setAddingSlug(null);
+    }
+  }
 
   // One-shot history backfill for a resumed session (agent.ts's
   // getConversationHistory) — guarded by a ref, not state, so dev-mode
@@ -276,11 +298,25 @@ export default function DiscoveryChat() {
               <div className="flex flex-col gap-3.5">
                 {recommendation.products.map((c) => (
                   <div key={c.id} className="flex items-center gap-3">
-                    <VialThumb name={c.name} size={48} />
-                    <div className="min-w-0 flex-1">
-                      <div className="font-display text-sm font-medium text-ink">{c.name}</div>
-                      <div className="text-xs text-muted">{c.notes}</div>
-                    </div>
+                    <Link
+                      to={`/${c.slug}`}
+                      className="tap-scale flex min-w-0 flex-1 items-center gap-3"
+                    >
+                      <VialThumb name={c.name} size={48} />
+                      <div className="min-w-0 flex-1">
+                        <div className="font-display text-sm font-medium text-ink">{c.name}</div>
+                        <div className="text-xs text-muted">{c.notes}</div>
+                      </div>
+                    </Link>
+                    <button
+                      type="button"
+                      aria-label={`Add ${c.name} to bag`}
+                      onClick={() => addOne(c)}
+                      disabled={addingSlug === c.slug || addedSlugs.has(c.slug)}
+                      className="tap-scale flex size-8 shrink-0 items-center justify-center rounded-full border border-line-strong text-lg leading-none text-ink disabled:opacity-50"
+                    >
+                      {addedSlugs.has(c.slug) ? "✓" : "+"}
+                    </button>
                   </div>
                 ))}
                 <div className="mt-1.5 flex gap-2">
