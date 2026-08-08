@@ -1,32 +1,35 @@
 import { Agent, callable } from "agents";
+import {
+  ConversationStore,
+  INITIAL_DISCOVERY_AGENT_STATE,
+  type DiscoveryAgentState,
+} from "./state";
 
 /**
- * Discovery-chat Agent — Phase 1 skeleton only (no business logic yet).
- * See sales-agent/.scratch/discovery-agent-architecture/build-plan.md.
+ * Discovery-chat Agent. See
+ * sales-agent/.scratch/discovery-agent-architecture/build-plan.md.
  *
- * State/tool/turn-generation logic lands in later phases (2-4); this phase
- * proves the routing/binding/decorator plumbing works at all before
- * building anything on top of it. `ping` exists solely to verify that path
- * end-to-end via a real client call.
+ * Phase 1 proved the routing/binding/decorator plumbing works (`ping`,
+ * still here for that same verification). Phase 2 adds the real state
+ * model — `this.state` for small live scalars, `this.sql` (via
+ * `ConversationStore`) for growing conversation data. Turn-generation
+ * logic (submitTurn) lands in Phase 4, once Phase 3's catalog tool exists.
  */
 
-// Env bindings this Agent needs. Extend as later phases add DB/API access —
-// left minimal here since Phase 1 has nothing to bind yet beyond what
-// `Agent`'s own generics require.
+// Env bindings this Agent needs. Extend as later phases add DB/API access.
 export interface Env {
   [key: string]: unknown;
 }
 
-export interface DiscoveryAgentState {
-  // Populated in Phase 2 (round/turn counters, candidate_cap, is_complete,
-  // final_recommendation, etc. — see build-plan.md's state-shape split).
-  // Left empty in Phase 1: `initialState` needs a concrete value, but
-  // there's nothing real to put in it yet.
-  _placeholder?: never;
-}
-
 export class DiscoveryAgent extends Agent<Env, DiscoveryAgentState> {
-  initialState: DiscoveryAgentState = {};
+  initialState: DiscoveryAgentState = INITIAL_DISCOVERY_AGENT_STATE;
+
+  private store!: ConversationStore;
+
+  onStart(): void {
+    this.store = new ConversationStore(this.sql.bind(this));
+    this.store.ensureTables();
+  }
 
   @callable()
   ping(): string {
