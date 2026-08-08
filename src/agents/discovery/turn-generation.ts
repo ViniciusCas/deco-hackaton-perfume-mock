@@ -144,6 +144,22 @@ export function renderTurnPrompt(state: TurnPromptState): string {
   return lines.join("\n");
 }
 
+// Ticket 07's "repeated-failure escalation": after this many consecutive
+// degraded turns in the same session, nudge toward the kept filter-UI
+// fallback rather than just repeating a generic "tell me more."
+const DEGRADED_NUDGE_THRESHOLD = 2;
+const BROWSE_INSTEAD_NUDGE = "In the meantime, you can also browse the full collection directly.";
+
+/** Pure — a text-only change to the message, no new mechanism, per
+ * ticket 07's exact resolution. Exported so it's directly testable
+ * without needing to reproduce two real degraded LLM calls in a row. */
+export function applyDegradedNudge(message: string, consecutiveDegradedTurns: number): string {
+  if (consecutiveDegradedTurns >= DEGRADED_NUDGE_THRESHOLD) {
+    return `${message} ${BROWSE_INSTEAD_NUDGE}`;
+  }
+  return message;
+}
+
 function getModel() {
   const apiKey = (env as { OPENAI_API_KEY?: string }).OPENAI_API_KEY;
   if (!apiKey) throw new Error("OPENAI_API_KEY not found on cloudflare:workers env");

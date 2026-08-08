@@ -43,6 +43,11 @@ export interface DiscoveryAgentState {
    * that may arrive well after submitTurn already returned the
    * recommendation, possibly after a reconnect. */
   pendingRecommendationLabels: string[];
+  /** Ticket 07's "repeated-failure escalation": counts consecutive
+   * validation-exhaustion (degraded) turns, reset to 0 by any normal
+   * turn. Used to append a "browse instead" pointer after 2 in a row —
+   * see turn-generation.ts / agent.ts's generateAndApplyTurn. */
+  consecutiveDegradedTurns: number;
 }
 
 export const INITIAL_DISCOVERY_AGENT_STATE: DiscoveryAgentState = {
@@ -54,6 +59,7 @@ export const INITIAL_DISCOVERY_AGENT_STATE: DiscoveryAgentState = {
   isComplete: false,
   finalRecommendationLabels: [],
   pendingRecommendationLabels: [],
+  consecutiveDegradedTurns: 0,
 };
 
 export type SqlFn = <T = Record<string, string | number | boolean | null>>(

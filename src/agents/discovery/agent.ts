@@ -5,7 +5,12 @@ import {
   INITIAL_DISCOVERY_AGENT_STATE,
   type DiscoveryAgentState,
 } from "./state";
-import { generateValidatedTurn, renderTurnPrompt, summarizeRound } from "./turn-generation";
+import {
+  applyDegradedNudge,
+  generateValidatedTurn,
+  renderTurnPrompt,
+  summarizeRound,
+} from "./turn-generation";
 
 /**
  * Discovery-chat Agent. See
@@ -167,7 +172,19 @@ export class DiscoveryAgent extends Agent<Env, DiscoveryAgentState> {
       rejectedProductLabels: this.store.rejectedLabels(),
     });
 
-    this.store.recordTurn(this.state.roundCount, "advisor", turn.message);
+    // Ticket 07's repeated-failure escalation: track consecutive degraded
+    // turns (any normal turn resets it), and nudge toward the kept
+    // filter-UI fallback once the streak hits the threshold. Applied to
+    // `message` before it's recorded/returned, in both branches below —
+    // a degraded turn can land in either (confirmed live: a hard-stop on
+    // an already-degraded turn produces exactly this case).
+    const consecutiveDegradedTurns = degraded ? this.state.consecutiveDegradedTurns + 1 : 0;
+    this.setState({ ...this.state, consecutiveDegradedTurns });
+    const message = degraded
+      ? applyDegradedNudge(turn.message, consecutiveDegradedTurns)
+      : turn.message;
+
+    this.store.recordTurn(this.state.roundCount, "advisor", message);
     this.store.setCandidateLabels(turn.updated_candidate_labels);
 
     const hitHardStop = this.state.turnInRound + 1 >= this.state.maxTurnsPerRound;
@@ -190,9 +207,9 @@ export class DiscoveryAgent extends Agent<Env, DiscoveryAgentState> {
 
       const productIds = this.store.idsForLabels(recommendedLabels);
       const products = await fetchProductsByIds(productIds);
-      return { kind: "recommendation", message: turn.message, forced, degraded, products };
+      return { kind: "recommendation", message, forced, degraded, products };
     }
 
-    return { kind: "question", message: turn.message, degraded };
+    return { kind: "question", message, degraded };
   }
 }
