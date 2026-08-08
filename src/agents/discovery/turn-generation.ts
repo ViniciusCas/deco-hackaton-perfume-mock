@@ -175,15 +175,23 @@ async function generateOnce(
   store: ConversationStore,
   candidateCap: number,
 ): Promise<SalesTurnOutput> {
-  const { output } = await generateText({
-    model: getModel(),
-    system: buildSystemPrompt(candidateCap),
-    prompt: promptText,
-    tools: { search_catalog: createSearchCatalogTool(store) },
-    output: Output.object({ schema: SalesTurnOutputSchema }),
-    stopWhen: isStepCount(5), // matches Python's Agent max_iter=5
-  });
-  return output;
+  const startedAt = performance.now();
+  try {
+    const { output } = await generateText({
+      model: getModel(),
+      system: buildSystemPrompt(candidateCap),
+      prompt: promptText,
+      tools: { search_catalog: createSearchCatalogTool(store) },
+      output: Output.object({ schema: SalesTurnOutputSchema }),
+      stopWhen: isStepCount(5), // matches Python's Agent max_iter=5
+    });
+    return output;
+  } finally {
+    // Ticket 08 signal 2: LLM call latency — logged in the finally branch
+    // so a failed/errored call's duration is visible too, not just
+    // successes.
+    console.log("discovery-agent:llm-latency", Math.round(performance.now() - startedAt));
+  }
 }
 
 type GenerationOutcome = { output: SalesTurnOutput } | { schemaError: string };
@@ -211,9 +219,21 @@ async function generateWithProviderRetry(
         };
       }
       if (attempt < MAX_PROVIDER_RETRIES) {
+        console.log(
+          "discovery-agent:provider-retry",
+          JSON.stringify({ attempt, error: err instanceof Error ? err.message : String(err) }),
+        );
         await sleep(PROVIDER_RETRY_DELAY_MS);
         continue;
       }
+      // Ticket 08 signal 4 (degraded-mode path, provider-failure branch):
+      // retries exhausted and about to throw uncaught, per ticket 07 —
+      // this is the one degraded-adjacent path that never reaches
+      // generateValidatedTurn's own degraded-fallback return below.
+      console.error(
+        "discovery-agent:provider-failure",
+        JSON.stringify({ error: err instanceof Error ? err.message : String(err) }),
+      );
       throw err;
     }
   }
@@ -261,12 +281,21 @@ export async function generateValidatedTurn(params: {
       lastError = validation.error;
     }
 
+    // Ticket 08 signal 1: validation failures/retries — every attempt
+    // that didn't return early above, whether a schema-shape miss or a
+    // guardrail rejection.
+    console.log("discovery-agent:validation-failure", JSON.stringify({ attempt, error: lastError }));
+
     attemptPrompt = `${promptText}\n\nYour previous answer was invalid: ${lastError}\nFix this and answer again.`;
   }
 
   // Retries exhausted — degrade instead of crashing the conversation,
   // matching Python's fallback exactly (keep the existing shortlist, ask
   // again next turn).
+  // Ticket 08 signal 4 (degraded-mode path, validation-exhaustion branch):
+  // distinct from the provider-failure log above — this path returns a
+  // graceful fallback turn rather than throwing.
+  console.error("discovery-agent:degraded", JSON.stringify({ lastError }));
   return {
     turn: {
       message: "Sorry, could you tell me a bit more about what you're looking for?",

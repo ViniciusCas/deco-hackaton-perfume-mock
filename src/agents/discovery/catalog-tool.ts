@@ -177,6 +177,15 @@ export function createSearchCatalogTool(store: ConversationStore) {
         rows = await fetchProducts({ ...args, limit });
       }
 
+      if (rows.length === 0) {
+        // Ticket 08 signal 3: zero-result catalog queries — the shopper's
+        // filter combination genuinely doesn't exist in the catalog,
+        // useful for spotting a model that's inventing attributes the
+        // catalog doesn't have or a filter combo worth adding a fast-follow
+        // param for (see this file's header note on v1 scope gaps).
+        console.log("discovery-agent:zero-results", JSON.stringify(args));
+      }
+
       return rows.map((row) => ({
         label: store.labelForId(row.id),
         name: row.name,
