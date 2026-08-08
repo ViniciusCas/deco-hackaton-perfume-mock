@@ -39,6 +39,19 @@
 			"id": "b49bb9a9c6b941868d7810752407e9d1"
 		}
 	],
+	// Discovery-chat Agent (Cloudflare Agents SDK, see
+	// sales-agent/.scratch/discovery-agent-architecture/build-plan.md Phase 1).
+	// Every Agent class needs its own binding + its own new_sqlite_classes
+	// migration entry below — never edit an existing migration tag, add a new
+	// one for new classes.
+	"durable_objects": {
+		"bindings": [
+			{ "name": "DISCOVERY_AGENT", "class_name": "DiscoveryAgent" }
+		]
+	},
+	"migrations": [
+		{ "tag": "v1", "new_sqlite_classes": ["DiscoveryAgent"] }
+	],
 	// Observability — three-channel model (Strategy B, see decocms/deco-start D-8).
 	//
 	// Identity:
