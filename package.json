@@ -33,6 +33,7 @@
   "author": "deco.cx",
   "license": "MIT",
   "dependencies": {
+    "@ai-sdk/openai": "^4.0.36",
     "@babel/plugin-proposal-decorators": "^8.0.2",
     "@decocms/apps-commerce": "^7.20.7",
     "@decocms/apps-shopify": "^7.20.7",

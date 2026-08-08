@@ -9,35 +9,51 @@
  * Unlike SalesTurnOutputSchema (schemas.ts), these field names are
  * camelCase — this state never gets sent to the LLM as a schema, it's pure
  * internal bookkeeping, so this app's usual naming convention applies.
+ *
+ * Python's version also carried store_name/store_description/briefing_text/
+ * column_manifest here, since it loaded them from files at Flow boot and
+ * needed to pass them along. This port doesn't: they're static constants
+ * (store-config.ts) imported directly wherever needed (turn-generation.ts),
+ * not per-conversation data, so keeping them in state would just be
+ * duplication with no purpose. `column_manifest` specifically has no TS
+ * equivalent at all — Phase 3's catalog tool has a fixed Zod schema, not
+ * Python's dynamic "any column the CSV happens to have" manifest.
+ *
+ * One more deliberate divergence, from Phase 4: Python's `final_recommendation`
+ * is a formatted text blob (name/price/description lines) built for a
+ * terminal UI. Per ticket 10's resolution, the real frontend renders
+ * recommendations via the existing `ProductTile` component, not text — so
+ * this holds the recommended product LABELS instead; the frontend
+ * fetches/renders full product data from those, same as everywhere else.
  */
+import { CANDIDATE_CAP, MAX_TURNS_PER_ROUND } from "./store-config";
 
 /** `this.state` — small, changes every turn, fine to broadcast. */
 export interface DiscoveryAgentState {
-  storeName: string;
-  storeDescription: string;
-  briefingText: string;
-  columnManifest: string;
   initialRequest: string;
   roundCount: number;
   turnInRound: number;
   maxTurnsPerRound: number;
   candidateCap: number;
   isComplete: boolean;
-  finalRecommendation: string;
+  finalRecommendationLabels: string[];
+  /** Labels awaiting an accept/reject decision — empty when no
+   * recommendation is currently pending. Has to live in state (not a
+   * local variable) since respondToRecommendation is a separate RPC call
+   * that may arrive well after submitTurn already returned the
+   * recommendation, possibly after a reconnect. */
+  pendingRecommendationLabels: string[];
 }
 
 export const INITIAL_DISCOVERY_AGENT_STATE: DiscoveryAgentState = {
-  storeName: "",
-  storeDescription: "",
-  briefingText: "",
-  columnManifest: "",
   initialRequest: "",
   roundCount: 0,
   turnInRound: 0,
-  maxTurnsPerRound: 4,
-  candidateCap: 8,
+  maxTurnsPerRound: MAX_TURNS_PER_ROUND,
+  candidateCap: CANDIDATE_CAP,
   isComplete: false,
-  finalRecommendation: "",
+  finalRecommendationLabels: [],
+  pendingRecommendationLabels: [],
 };
 
 export type SqlFn = <T = Record<string, string | number | boolean | null>>(

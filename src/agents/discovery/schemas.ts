@@ -25,20 +25,19 @@ export const SalesTurnOutputSchema = z.object({
     .describe("True only when ready to present a recommendation this turn"),
   updated_candidate_labels: z
     .array(z.string())
-    .default([])
     .describe(
       "The shortlist of product LABELS (not names!) after this turn's reasoning — the " +
-        "'id=' value from each product's product_catalog_query result line (e.g. 'P3'), " +
-        "never a product's name and never a label you remember or invent. Must be at most " +
-        "the shortlist cap, and a subset of the previous shortlist once one exists.",
+        "label field from each product the search_catalog tool returned (e.g. 'P3'), never " +
+        "a product's name and never a label you remember or invent. Must be at most the " +
+        "shortlist cap, and a subset of the previous shortlist once one exists. Empty array " +
+        "if no shortlist exists yet.",
     ),
   recommended_product_labels: z
     .array(z.string())
-    .default([])
     .describe(
-      "Required, non-empty when is_final is true: the product LABEL(s) (not names!) " +
-        "being recommended — the 'id=' value from the tool's result line for each, never " +
-        "a label you remember or invent.",
+      "Non-empty when is_final is true: the product LABEL(s) (not names!) being " +
+        "recommended — the label field from the tool's result for each, never a label you " +
+        "remember or invent. Empty array when is_final is false.",
     ),
 });
 
