@@ -5,6 +5,7 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "vite";
 import path from "path";
+import agentsVitePlugin from "agents/vite";
 
 const srcDir = path.resolve(__dirname, "src");
 
@@ -16,6 +17,11 @@ export default defineConfig({
     // the store's custom domain).
   },
   plugins: [
+    // Handles TC39 decorator transforms for @callable() (Vite's default
+    // Oxc transpiler doesn't support them yet — oxc#9170) — needed for
+    // src/agents/discovery/agent.ts. Must run before other transforms see
+    // that code.
+    ...agentsVitePlugin(),
     cloudflare({ viteEnvironment: { name: "ssr" } }),
     tanstackStart({ server: { entry: "server" } }),
     react({
