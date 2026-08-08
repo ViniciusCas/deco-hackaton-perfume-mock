@@ -1,6 +1,5 @@
 {
 	"name": "sillage-discovery-tail",
 	"main": "./src/index.ts",
-	"compatibility_date": "2026-02-14",
-	"workers_dev": true
+	"compatibility_date": "2026-02-14"
 }

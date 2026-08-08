@@ -159,7 +159,7 @@ function HomePage() {
         <p className="mb-4.5 max-w-md text-sm text-muted sm:mb-7 sm:text-base">
           A short conversation, one scent profile, three vials worth trying.
         </p>
-        <Button href="/fragrance" variant="solid" size="md">
+        <Button href="/discovery" variant="solid" size="md">
           Talk to our fragrance expert
         </Button>
       </section>
