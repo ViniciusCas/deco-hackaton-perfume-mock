@@ -58,7 +58,7 @@ function toStringArray(value: unknown): string[] | undefined {
   return undefined;
 }
 
-export const Route = createFileRoute("/fragrance")({
+export const Route = createFileRoute("/fragrance/browse")({
   component: FragrancePage,
   validateSearch: (search: Record<string, unknown>): FragranceSearch => ({
     q: typeof search.q === "string" ? search.q : undefined,

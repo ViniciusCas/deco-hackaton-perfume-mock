@@ -66,6 +66,15 @@ export class DiscoveryAgent extends Agent<Env, DiscoveryAgentState> {
     return "pong";
   }
 
+  /** Phase 6: lets a reconnecting client backfill the current round's
+   * transcript once on connect — a one-shot pull, not a continuous
+   * broadcast, so it doesn't reopen ticket 05's "don't put a growing list
+   * in `this.state`" decision (state.ts's header comment). */
+  @callable()
+  getConversationHistory(): { speaker: string; content: string }[] {
+    return this.store.historyForRound(this.state.roundCount);
+  }
+
   @callable({ streaming: true })
   async submitTurn(stream: StreamingResponse, reply: string): Promise<void> {
     try {

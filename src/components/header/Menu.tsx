@@ -43,7 +43,7 @@ function Menu({ navItems = [] }: Props) {
 
       <ul className="flex flex-col gap-1 border-t border-ink-soft/10 py-4">
         {[
-          { href: "/discovery", icon: "search" as const, label: "Discovery" },
+          { href: "/fragrance", icon: "search" as const, label: "Discovery" },
           { href: "/cart", icon: "shopping_bag" as const, label: "Sua sacola" },
           { href: "/wishlist", icon: "favorite" as const, label: "Lista de desejos" },
           { href: "#", icon: "home_pin" as const, label: "Nossas lojas" },

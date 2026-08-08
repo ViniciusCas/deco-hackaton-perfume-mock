@@ -93,8 +93,17 @@
 		"DECO_OTEL_TRACES_ENDPOINT": "https://otel-ingest.infra.deco.cx/v1/traces",
 		"DECO_OTEL_ERROR_PROMOTION": "true",
 		"DECO_OTEL_ERROR_PROMOTION_RATE": "0.1",
-		"DECO_OTEL_LOGS_MIN_LEVEL": "debug"
-		// DECO_OTEL_AUTH_TOKEN goes as a secret: wrangler secret put DECO_OTEL_AUTH_TOKEN
+		"DECO_OTEL_LOGS_MIN_LEVEL": "debug",
+		// Ticket 11's resolution: feature flag, not a direct cutover — lets the
+		// team dogfood discovery-chat as /fragrance's default before flipping
+		// every visitor to it. `SITES_KV`/withABTesting (above) was considered
+		// first per the ticket's own suggestion, but checking its actual code
+		// showed it splits traffic between this whole worker and a *different*
+		// legacy origin during migration — not a per-route toggle within this
+		// same worker, so it doesn't fit. A plain var is proportionate here
+		// (manual dogfooding, no formal experiment — ticket 11's answer).
+		// Set to "1" to make /fragrance the chat by default.
+		"DISCOVERY_CHAT_ENABLED": "0"
 	},
 	"hyperdrive": [
 		{

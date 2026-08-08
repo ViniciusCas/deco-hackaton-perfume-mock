@@ -13,7 +13,6 @@ const SITE_NAME = "Sillage";
 
 const NAV_ITEMS = [
   { "@type": "SiteNavigationElement" as const, name: "Fragrance", url: "/fragrance" },
-  { "@type": "SiteNavigationElement" as const, name: "Discovery", url: "/discovery" },
 ];
 
 const FOOTER_LINKS = [
@@ -22,7 +21,6 @@ const FOOTER_LINKS = [
     href: "/",
     children: [
       { title: "All fragrance", href: "/" },
-      { title: "Discovery", href: "/discovery" },
       { title: "Your bag", href: "/cart" },
     ],
   },
