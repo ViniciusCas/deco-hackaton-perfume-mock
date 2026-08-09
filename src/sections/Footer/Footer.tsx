@@ -146,17 +146,20 @@ function Footer({
             <span className="text-xs text-muted">{trademark}</span>
           </div>
 
-          {policies.length > 0 && (
-            <ul className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
-              {policies.map(({ title, href }) => (
-                <li key={href}>
-                  <a className="text-xs text-muted" href={href}>
-                    {title}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          )}
+          <ul className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+            {policies.map(({ title, href }) => (
+              <li key={href}>
+                <a className="text-xs text-muted" href={href}>
+                  {title}
+                </a>
+              </li>
+            ))}
+            <li>
+              <a className="text-xs text-muted" href="/insights/catalog-gaps">
+                Catalog gap signals
+              </a>
+            </li>
+          </ul>
         </div>
       </div>
     </footer>
