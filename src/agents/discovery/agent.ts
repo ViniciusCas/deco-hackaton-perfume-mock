@@ -1,4 +1,5 @@
 import { Agent, callable, type Connection, type ConnectionContext, type StreamingResponse } from "agents";
+import { recordCatalogGapSignal } from "./catalog-gap-registry";
 import { fetchProductsByIds, fetchWishlistSummary } from "./catalog-tool";
 import { recordConversationStart, touchConversation } from "./conversation-registry";
 import {
@@ -203,6 +204,7 @@ export class DiscoveryAgent extends Agent<Env, DiscoveryAgentState> {
         .join("\n");
       const summary = await summarizeRound(transcript, this.state.candidateCap);
       this.store.addRoundSummary(this.state.roundCount, summary);
+      await recordCatalogGapSignal(this.name, this.loggedInUserId, summary);
       this.store.clearCandidatesForNewRound();
 
       this.setState({

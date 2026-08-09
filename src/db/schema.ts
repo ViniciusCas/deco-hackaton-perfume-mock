@@ -241,6 +241,21 @@ export const discoveryConversations = pgTable("discovery_conversations", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// One row per rejected discovery-chat round — the LLM-written summary of
+// what the shopper wanted and why the recommendation missed, already
+// generated for the *next* round's prompt (turn-generation.ts's
+// summarizeRound) and simply persisted here too. Captured for guests and
+// signed-in shoppers alike (userId nullable, no FK) since this is an ops
+// signal about catalog gaps, not per-user data — unlike
+// discoveryConversations, which only exists for logged-in history.
+export const discoveryCatalogGaps = pgTable("discovery_catalog_gaps", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  conversationId: text("conversation_id").notNull(),
+  userId: text("user_id"),
+  summary: text("summary").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // customerId nullable + guestEmail covers guest checkout; shipping fields are
 // a snapshot (not an addresses FK) so guest orders — which have no address
 // book — and later address-book edits both work the same way.
