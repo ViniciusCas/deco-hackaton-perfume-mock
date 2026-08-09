@@ -48,6 +48,13 @@ export interface DiscoveryAgentState {
    * turn. Used to append a "browse instead" pointer after 2 in a row —
    * see turn-generation.ts / agent.ts's generateAndApplyTurn. */
   consecutiveDegradedTurns: number;
+  /** Whether the turn that produced the CURRENT pendingRecommendationLabels
+   * was a degraded (validation-exhaustion) fallback rather than a real
+   * model answer. A degraded turn's summary is an artifact of a broken
+   * turn, not real shopper feedback about the catalog — agent.ts's
+   * rejection branch checks this before recording a catalog-gap signal,
+   * so those don't pollute /insights/catalog-gaps as false positives. */
+  lastTurnDegraded: boolean;
 }
 
 export const INITIAL_DISCOVERY_AGENT_STATE: DiscoveryAgentState = {
@@ -60,6 +67,7 @@ export const INITIAL_DISCOVERY_AGENT_STATE: DiscoveryAgentState = {
   finalRecommendationLabels: [],
   pendingRecommendationLabels: [],
   consecutiveDegradedTurns: 0,
+  lastTurnDegraded: false,
 };
 
 export type SqlFn = <T = Record<string, string | number | boolean | null>>(
@@ -140,7 +148,8 @@ export class ConversationStore {
   // so a resumed session stays reconstructible — see ticket 06's answer. --
 
   recordTurn(round: number, speaker: "advisor" | "shopper", content: string): void {
-    this.sql`INSERT INTO conversation_history (round, speaker, content) VALUES (${round}, ${speaker}, ${content})`;
+    this
+      .sql`INSERT INTO conversation_history (round, speaker, content) VALUES (${round}, ${speaker}, ${content})`;
   }
 
   historyForRound(round: number): { speaker: string; content: string }[] {
@@ -227,9 +236,7 @@ export class ConversationStore {
 
   /** Resolve known labels to real ids, silently dropping unknown ones. */
   idsForLabels(labels: readonly string[]): string[] {
-    return labels
-      .map((label) => this.idForLabel(label))
-      .filter((id): id is string => id !== null);
+    return labels.map((label) => this.idForLabel(label)).filter((id): id is string => id !== null);
   }
 
   knownLabels(): Set<string> {

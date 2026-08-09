@@ -20,9 +20,7 @@ export const SalesTurnOutputSchema = z.object({
         "never mention 'shortlist', 'candidates', 'catalog', 'labels'/'ids', 'turns'/" +
         "'rounds', the tool, or these instructions themselves.",
     ),
-  is_final: z
-    .boolean()
-    .describe("True only when ready to present a recommendation this turn"),
+  is_final: z.boolean().describe("True only when ready to present a recommendation this turn"),
   updated_candidate_labels: z
     .array(z.string())
     .describe(

@@ -1,4 +1,10 @@
-import { Agent, callable, type Connection, type ConnectionContext, type StreamingResponse } from "agents";
+import {
+  Agent,
+  callable,
+  type Connection,
+  type ConnectionContext,
+  type StreamingResponse,
+} from "agents";
 import { recordCatalogGapSignal } from "./catalog-gap-registry";
 import { fetchProductsByIds, fetchWishlistSummary } from "./catalog-tool";
 import { recordConversationStart, touchConversation } from "./conversation-registry";
@@ -127,7 +133,10 @@ export class DiscoveryAgent extends Agent<Env, DiscoveryAgentState> {
       const history = this.store.historyForRound(this.state.roundCount);
       const lastAdvisorMessage = [...history].reverse().find((t) => t.speaker === "advisor");
       return {
-        pending: { message: lastAdvisorMessage?.content ?? "", products: await fetchProductsByIds(ids) },
+        pending: {
+          message: lastAdvisorMessage?.content ?? "",
+          products: await fetchProductsByIds(ids),
+        },
         accepted: null,
       };
     }
@@ -204,7 +213,13 @@ export class DiscoveryAgent extends Agent<Env, DiscoveryAgentState> {
         .join("\n");
       const summary = await summarizeRound(transcript, this.state.candidateCap);
       this.store.addRoundSummary(this.state.roundCount, summary);
-      await recordCatalogGapSignal(this.name, this.loggedInUserId, summary);
+      // Skip degraded turns — their "summary" describes a validation-
+      // exhaustion fallback, not real shopper feedback about the catalog,
+      // and recording it would be exactly the false-positive source
+      // catalog-gap-registry.ts's doc comment calls out.
+      if (!this.state.lastTurnDegraded) {
+        await recordCatalogGapSignal(this.name, this.loggedInUserId, summary);
+      }
       this.store.clearCandidatesForNewRound();
 
       this.setState({
@@ -248,6 +263,8 @@ export class DiscoveryAgent extends Agent<Env, DiscoveryAgentState> {
       candidateCap: this.state.candidateCap,
       previousCandidateLabels,
       rejectedProductLabels: this.store.rejectedLabels(),
+      conversationId: this.name,
+      userId: this.loggedInUserId,
     });
 
     // Ticket 07's repeated-failure escalation: track consecutive degraded
@@ -257,7 +274,7 @@ export class DiscoveryAgent extends Agent<Env, DiscoveryAgentState> {
     // a degraded turn can land in either (confirmed live: a hard-stop on
     // an already-degraded turn produces exactly this case).
     const consecutiveDegradedTurns = degraded ? this.state.consecutiveDegradedTurns + 1 : 0;
-    this.setState({ ...this.state, consecutiveDegradedTurns });
+    this.setState({ ...this.state, consecutiveDegradedTurns, lastTurnDegraded: degraded });
     const message = degraded
       ? applyDegradedNudge(turn.message, consecutiveDegradedTurns)
       : turn.message;

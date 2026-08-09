@@ -33,7 +33,8 @@ export function useCatalogGaps(enabled: boolean) {
     staleTime: 10_000,
   });
   return {
-    gaps: query.data ?? [],
+    summaries: query.data?.summaries ?? [],
+    zeroResultGroups: query.data?.zeroResultGroups ?? [],
     isLoading: enabled && query.isLoading,
   };
 }

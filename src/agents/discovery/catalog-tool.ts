@@ -1,5 +1,6 @@
 import { tool } from "ai";
 import { z } from "zod";
+import { recordZeroResultSignal } from "./catalog-gap-registry";
 import type { ConversationStore } from "./state";
 
 /**
@@ -101,13 +102,22 @@ export async function fetchWishlistSummary(authToken: string): Promise<string | 
   const products = await fetchProductsByIds(productIds);
   if (products.length === 0) return null;
 
-  const items = products.slice(0, 5).map((p) => `${p.name} (${p.family})`).join(", ");
+  const items = products
+    .slice(0, 5)
+    .map((p) => `${p.name} (${p.family})`)
+    .join(", ");
   return `This shopper has previously favorited: ${items}.`;
 }
 
 function matchesClientSideFilters(
   row: SillageProductRow,
-  filters: { search?: string; family?: string[]; brand?: string[]; priceMin?: number; priceMax?: number },
+  filters: {
+    search?: string;
+    family?: string[];
+    brand?: string[];
+    priceMin?: number;
+    priceMax?: number;
+  },
 ): boolean {
   if (filters.family?.length && !filters.family.includes(row.family)) return false;
   if (filters.brand?.length && !filters.brand.includes(row.brand)) return false;
@@ -140,18 +150,20 @@ function sortRows(rows: SillageProductRow[], sort: SortKey | undefined): Sillage
 }
 
 const CatalogQueryInputSchema = z.object({
-  search: z
-    .string()
-    .optional()
-    .describe("Free-text search over product name, brand, and notes"),
+  search: z.string().optional().describe("Free-text search over product name, brand, and notes"),
   family: z
     .array(z.string())
     .optional()
-    .describe("Scent family filter, e.g. ['Citrus', 'Woody'] — values come from the catalog itself, don't guess names"),
+    .describe(
+      "Scent family filter, e.g. ['Citrus', 'Woody'] — values come from the catalog itself, don't guess names",
+    ),
   brand: z.array(z.string()).optional().describe("Brand filter"),
   priceMin: z.number().optional().describe("Minimum price"),
   priceMax: z.number().optional().describe("Maximum price"),
-  sort: z.enum(SORTS).optional().describe("Sort order — defaults to 'recommended' (rating/popularity) if omitted"),
+  sort: z
+    .enum(SORTS)
+    .optional()
+    .describe("Sort order — defaults to 'recommended' (rating/popularity) if omitted"),
   restrict_to_ids: z
     .array(z.string())
     .optional()
@@ -167,9 +179,17 @@ const CatalogQueryInputSchema = z.object({
  * Factory, not a static tool — execute() needs the per-conversation
  * ConversationStore to assign/resolve short labels, matching how Python's
  * CatalogQueryTool was instantiated per-Flow-run with a `catalog`
- * reference (sales-agent/.../tools.py).
+ * reference (sales-agent/.../tools.py). conversationId/userId are only
+ * needed for the zero-result gap signal below (catalog-gap-registry.ts) —
+ * plumbed through here rather than read off some ambient context because
+ * this tool has no other reason to know about the Agent it's running
+ * inside of.
  */
-export function createSearchCatalogTool(store: ConversationStore) {
+export function createSearchCatalogTool(
+  store: ConversationStore,
+  conversationId: string,
+  userId: string | null,
+) {
   return tool({
     description:
       "Search the fragrance catalog by scent family, brand, price range, or free text. " +
@@ -212,6 +232,18 @@ export function createSearchCatalogTool(store: ConversationStore) {
         // catalog doesn't have or a filter combo worth adding a fast-follow
         // param for (see this file's header note on v1 scope gaps).
         console.log("discovery-agent:zero-results", JSON.stringify(args));
+
+        // Only a real catalog-gap signal when this was a fresh query
+        // against the whole catalog. A restrict_to_ids call narrowing an
+        // already-small (<= candidate_cap) shortlist down to nothing just
+        // means the shopper's own additional filter didn't match THAT
+        // shortlist — it says nothing about the catalog as a whole, and
+        // logging it would just reintroduce a false-positive source while
+        // fixing another one.
+        if (!args.restrict_to_ids || args.restrict_to_ids.length === 0) {
+          const { limit: _limit, restrict_to_ids: _restrictToIds, ...filters } = args;
+          await recordZeroResultSignal(conversationId, userId, filters);
+        }
       }
 
       return rows.map((row) => ({

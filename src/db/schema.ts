@@ -24,6 +24,7 @@
 import {
   boolean,
   integer,
+  jsonb,
   numeric,
   pgEnum,
   pgTable,
@@ -241,18 +242,35 @@ export const discoveryConversations = pgTable("discovery_conversations", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-// One row per rejected discovery-chat round — the LLM-written summary of
-// what the shopper wanted and why the recommendation missed, already
-// generated for the *next* round's prompt (turn-generation.ts's
-// summarizeRound) and simply persisted here too. Captured for guests and
-// signed-in shoppers alike (userId nullable, no FK) since this is an ops
-// signal about catalog gaps, not per-user data — unlike
-// discoveryConversations, which only exists for logged-in history.
+// Two distinct kinds of catalog-gap signal, deliberately kept apart
+// because they carry very different evidentiary weight:
+// - "rejection_summary": the LLM's own narrative of what a shopper wanted
+//   and why a recommendation missed (turn-generation.ts's summarizeRound).
+//   Useful context, but it's an interpretation — a shopper can reject for
+//   reasons that have nothing to do with a real catalog gap (indecision,
+//   just browsing), so this alone is prone to false positives.
+// - "zero_result_query": the exact filter args a search_catalog call used
+//   when it got 0 rows back (catalog-tool.ts) — a hard fact, not an LLM
+//   interpretation, and `filters` is structured (not free text) so
+//   repeats of the same filter combo can be grouped/counted exactly
+//   rather than fuzzy-matched.
+export const discoveryGapKind = pgEnum("discovery_gap_kind", [
+  "rejection_summary",
+  "zero_result_query",
+]);
+
+// One row per signal — a rejected round's summary, or a zero-result
+// search_catalog call. Captured for guests and signed-in shoppers alike
+// (userId nullable, no FK) since this is an ops signal about catalog
+// gaps, not per-user data — unlike discoveryConversations, which only
+// exists for logged-in history.
 export const discoveryCatalogGaps = pgTable("discovery_catalog_gaps", {
   id: uuid("id").primaryKey().defaultRandom(),
   conversationId: text("conversation_id").notNull(),
   userId: text("user_id"),
-  summary: text("summary").notNull(),
+  kind: discoveryGapKind("kind").notNull().default("rejection_summary"),
+  summary: text("summary"),
+  filters: jsonb("filters"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -342,7 +360,10 @@ export const cartsRelations = relations(carts, ({ one, many }) => ({
 
 export const cartItemsRelations = relations(cartItems, ({ one }) => ({
   cart: one(carts, { fields: [cartItems.cartId], references: [carts.id] }),
-  variant: one(productVariants, { fields: [cartItems.variantId], references: [productVariants.id] }),
+  variant: one(productVariants, {
+    fields: [cartItems.variantId],
+    references: [productVariants.id],
+  }),
 }));
 
 export const wishlistItemsRelations = relations(wishlistItems, ({ one }) => ({
@@ -358,5 +379,8 @@ export const ordersRelations = relations(orders, ({ one, many }) => ({
 export const orderItemsRelations = relations(orderItems, ({ one }) => ({
   order: one(orders, { fields: [orderItems.orderId], references: [orders.id] }),
   product: one(products, { fields: [orderItems.productId], references: [products.id] }),
-  variant: one(productVariants, { fields: [orderItems.variantId], references: [productVariants.id] }),
+  variant: one(productVariants, {
+    fields: [orderItems.variantId],
+    references: [productVariants.id],
+  }),
 }));

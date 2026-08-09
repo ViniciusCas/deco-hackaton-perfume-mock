@@ -58,9 +58,9 @@ function buildSystemPrompt(candidateCap: number): string {
     "goal, the backstory, tool names, labels/ids, the shortlist, turn/round counts) is " +
     "private machinery for you alone. Never mention any of it, quote it, or refer to 'my " +
     "instructions' — write 'message' as a real shop assistant would talk out loud, with no " +
-    "sign this internal process exists. Say things like \"what I'm seeing so far\" or \"a " +
-    "couple of options\", never \"shortlist\", \"candidates\", \"catalog\", \"labels/ids\", " +
-    "or \"turn/round\".\n\n" +
+    'sign this internal process exists. Say things like "what I\'m seeing so far" or "a ' +
+    'couple of options", never "shortlist", "candidates", "catalog", "labels/ids", ' +
+    'or "turn/round".\n\n' +
     "Each round has a hard turn limit, enforced turn by turn in your prompt. Treat it as a " +
     "real deadline, not a suggestion: on your last allowed turn you must set is_final=true " +
     "and recommend from whatever shortlist you have — asking one more question is not an " +
@@ -174,7 +174,8 @@ function getModel() {
   if (!apiKey) throw new Error("OPENAI_API_KEY not found on cloudflare:workers env");
   // Swappable per ticket 09's resolution ("LLM provider stays
   // unpinned/swappable") — mirrors Python's SALES_ADVISOR_LLM env var.
-  const modelName = (env as { DISCOVERY_AGENT_MODEL?: string }).DISCOVERY_AGENT_MODEL || "gpt-4.1-mini";
+  const modelName =
+    (env as { DISCOVERY_AGENT_MODEL?: string }).DISCOVERY_AGENT_MODEL || "gpt-4.1-mini";
   const openai = createOpenAI({ apiKey });
   return openai(modelName);
 }
@@ -183,6 +184,8 @@ async function generateOnce(
   promptText: string,
   store: ConversationStore,
   candidateCap: number,
+  conversationId: string,
+  userId: string | null,
 ): Promise<SalesTurnOutput> {
   const startedAt = performance.now();
   try {
@@ -190,7 +193,7 @@ async function generateOnce(
       model: getModel(),
       system: buildSystemPrompt(candidateCap),
       prompt: promptText,
-      tools: { search_catalog: createSearchCatalogTool(store) },
+      tools: { search_catalog: createSearchCatalogTool(store, conversationId, userId) },
       output: Output.object({ schema: SalesTurnOutputSchema }),
       stopWhen: isStepCount(5), // matches Python's Agent max_iter=5
     });
@@ -214,10 +217,12 @@ async function generateWithProviderRetry(
   promptText: string,
   store: ConversationStore,
   candidateCap: number,
+  conversationId: string,
+  userId: string | null,
 ): Promise<GenerationOutcome> {
   for (let attempt = 0; attempt <= MAX_PROVIDER_RETRIES; attempt++) {
     try {
-      const output = await generateOnce(promptText, store, candidateCap);
+      const output = await generateOnce(promptText, store, candidateCap, conversationId, userId);
       return { output };
     } catch (err) {
       if (NoOutputGeneratedError.isInstance(err)) {
@@ -266,13 +271,29 @@ export async function generateValidatedTurn(params: {
   candidateCap: number;
   previousCandidateLabels: readonly string[];
   rejectedProductLabels: readonly string[];
+  conversationId: string;
+  userId: string | null;
 }): Promise<GenerateValidatedTurnResult> {
-  const { promptText, store, candidateCap, previousCandidateLabels, rejectedProductLabels } = params;
+  const {
+    promptText,
+    store,
+    candidateCap,
+    previousCandidateLabels,
+    rejectedProductLabels,
+    conversationId,
+    userId,
+  } = params;
   let attemptPrompt = promptText;
   let lastError = "unknown validation error";
 
   for (let attempt = 0; attempt <= MAX_VALIDATION_RETRIES; attempt++) {
-    const result = await generateWithProviderRetry(attemptPrompt, store, candidateCap);
+    const result = await generateWithProviderRetry(
+      attemptPrompt,
+      store,
+      candidateCap,
+      conversationId,
+      userId,
+    );
 
     if ("schemaError" in result) {
       lastError = result.schemaError;
@@ -293,7 +314,10 @@ export async function generateValidatedTurn(params: {
     // Ticket 08 signal 1: validation failures/retries — every attempt
     // that didn't return early above, whether a schema-shape miss or a
     // guardrail rejection.
-    console.log("discovery-agent:validation-failure", JSON.stringify({ attempt, error: lastError }));
+    console.log(
+      "discovery-agent:validation-failure",
+      JSON.stringify({ attempt, error: lastError }),
+    );
 
     attemptPrompt = `${promptText}\n\nYour previous answer was invalid: ${lastError}\nFix this and answer again.`;
   }
