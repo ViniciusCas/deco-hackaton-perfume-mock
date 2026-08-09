@@ -1,8 +1,9 @@
+import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useUser } from "~/platform/user";
 import { useCatalogGaps } from "~/platform/discovery";
-import type { CatalogFilters } from "~/platform/discovery";
 import Button from "~/components/ui/Button";
+import ConversationTrace from "~/components/discovery/ConversationTrace";
 
 /**
  * Turns the discovery-agent's own conversations into an ops-facing signal
@@ -19,6 +20,13 @@ import Button from "~/components/ui/Button";
  *   than counted/grouped.
  * Degraded (validation-exhaustion) turns are filtered out entirely before
  * either ever reaches this page (agent.ts's rejection branch).
+ *
+ * Every entry also carries its own trace: the shopper's opening ask
+ * (initialRequest, stored directly on the row) plus an on-demand "View
+ * full conversation" toggle that connects live to that exact
+ * conversation's DiscoveryAgent and pulls its real, already-persisted
+ * transcript (ConversationTrace.tsx) — not a snapshot, the source of
+ * truth itself.
  *
  * Gated on any logged-in session, same limitation as the server function
  * (discovery.actions.ts) — there's no staff/admin role in this app yet.
@@ -38,14 +46,24 @@ function relativeTime(iso: string): string {
   return `${days}d ago`;
 }
 
-function describeFilters(filters: CatalogFilters): string {
-  const parts: string[] = [];
-  if (filters.search) parts.push(`search "${filters.search}"`);
-  if (filters.family?.length) parts.push(`family ${filters.family.join(", ")}`);
-  if (filters.brand?.length) parts.push(`brand ${filters.brand.join(", ")}`);
-  if (typeof filters.priceMin === "number") parts.push(`price ≥ $${filters.priceMin}`);
-  if (typeof filters.priceMax === "number") parts.push(`price ≤ $${filters.priceMax}`);
-  return parts.length > 0 ? parts.join(" · ") : "(no filters — an empty catalog-wide query)";
+function TraceToggle({ conversationId }: { conversationId: string }) {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <div className="mt-3">
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className="tap-scale text-xs font-medium text-accent underline"
+      >
+        {expanded ? "Hide full conversation" : "View full conversation →"}
+      </button>
+      {expanded && (
+        <div className="mt-3 rounded-lg border border-line bg-surface p-3">
+          <ConversationTrace conversationId={conversationId} />
+        </div>
+      )}
+    </div>
+  );
 }
 
 function CatalogGapsPage() {
@@ -79,8 +97,9 @@ function CatalogGapsPage() {
       <div className="mb-8">
         <h1 className="font-display text-3xl font-light text-ink">Catalog gap signals</h1>
         <p className="mt-1 text-sm text-muted">
-          What the discovery chat couldn't satisfy — grouped, hard-fact searches first, then the
-          assistant's own read on why a recommendation didn't land.
+          What the discovery chat couldn't satisfy — grouped, hard-fact searches first, then
+          the assistant's own read on why a recommendation didn't land. Every entry traces
+          back to the conversation it came from.
         </p>
       </div>
 
@@ -93,8 +112,8 @@ function CatalogGapsPage() {
           <section>
             <h2 className="mb-1 font-display text-lg font-medium text-ink">Zero-result searches</h2>
             <p className="mb-4 text-xs text-muted">
-              Exact filter combinations that came back empty — counted by how many times the same
-              combination happened, across any number of shoppers.
+              Exact filter combinations that came back empty — counted by how many times the
+              same combination happened, across any number of shoppers.
             </p>
             {zeroResultGroups.length === 0 ? (
               <div className="frost rounded-lg p-6 text-center text-sm text-muted">
@@ -103,21 +122,24 @@ function CatalogGapsPage() {
             ) : (
               <ul className="flex flex-col gap-3">
                 {zeroResultGroups.map((group) => (
-                  <li
-                    key={JSON.stringify(group.filters)}
-                    className="frost flex items-start justify-between gap-4 rounded-lg p-5"
-                  >
-                    <div>
-                      <p className="text-sm leading-relaxed text-ink">
-                        {describeFilters(group.filters)}
-                      </p>
-                      <p className="mt-1 text-xs text-muted">
-                        Last seen {relativeTime(group.lastSeenAt)}
-                      </p>
+                  <li key={JSON.stringify(group.filters)} className="frost rounded-lg p-5">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-sm leading-relaxed text-ink">{group.summary}</p>
+                        {group.exampleInitialRequest && (
+                          <p className="mt-1.5 text-xs text-muted">
+                            From a conversation that started: “{group.exampleInitialRequest}”
+                          </p>
+                        )}
+                        <p className="mt-1 text-xs text-muted">
+                          Last seen {relativeTime(group.lastSeenAt)}
+                        </p>
+                      </div>
+                      <span className="shrink-0 rounded-full bg-rose px-2.5 py-1 text-xs font-medium text-black">
+                        ×{group.count}
+                      </span>
                     </div>
-                    <span className="shrink-0 rounded-full bg-rose px-2.5 py-1 text-xs font-medium text-black">
-                      ×{group.count}
-                    </span>
+                    <TraceToggle conversationId={group.exampleConversationId} />
                   </li>
                 ))}
               </ul>
@@ -129,8 +151,8 @@ function CatalogGapsPage() {
               Rejected recommendations
             </h2>
             <p className="mb-4 text-xs text-muted">
-              The assistant's own summary of what a shopper wanted and why the pick it made didn't
-              land — one entry per rejected round.
+              The assistant's own summary of what a shopper wanted and why the pick it made
+              didn't land — one entry per rejected round.
             </p>
             {summaries.length === 0 ? (
               <div className="frost rounded-lg p-6 text-center text-sm text-muted">
@@ -141,10 +163,19 @@ function CatalogGapsPage() {
                 {summaries.map((s) => (
                   <li key={s.id} className="frost rounded-lg p-5">
                     <div className="mb-2 flex items-center justify-between text-xs text-muted">
-                      <span>Conversation {s.conversationId.slice(0, 8)}</span>
+                      <span>
+                        Conversation {s.conversationId.slice(0, 8)}
+                        {s.roundCount !== null ? ` · round ${s.roundCount + 1}` : ""}
+                      </span>
                       <span>{relativeTime(s.createdAt)}</span>
                     </div>
                     <p className="text-sm leading-relaxed text-ink">{s.summary}</p>
+                    {s.initialRequest && (
+                      <p className="mt-1.5 text-xs text-muted">
+                        Started as: “{s.initialRequest}”
+                      </p>
+                    )}
+                    <TraceToggle conversationId={s.conversationId} />
                   </li>
                 ))}
               </ul>

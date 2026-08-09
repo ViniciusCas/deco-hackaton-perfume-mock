@@ -218,7 +218,10 @@ export class DiscoveryAgent extends Agent<Env, DiscoveryAgentState> {
       // and recording it would be exactly the false-positive source
       // catalog-gap-registry.ts's doc comment calls out.
       if (!this.state.lastTurnDegraded) {
-        await recordCatalogGapSignal(this.name, this.loggedInUserId, summary);
+        await recordCatalogGapSignal(this.name, this.loggedInUserId, summary, {
+          initialRequest: this.state.initialRequest,
+          roundCount: this.state.roundCount,
+        });
       }
       this.store.clearCandidatesForNewRound();
 
@@ -265,6 +268,7 @@ export class DiscoveryAgent extends Agent<Env, DiscoveryAgentState> {
       rejectedProductLabels: this.store.rejectedLabels(),
       conversationId: this.name,
       userId: this.loggedInUserId,
+      trace: { initialRequest: this.state.initialRequest, roundCount: this.state.roundCount },
     });
 
     // Ticket 07's repeated-failure escalation: track consecutive degraded

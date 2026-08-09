@@ -2,6 +2,7 @@ import { generateText, isStepCount, NoOutputGeneratedError, Output } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 // @ts-expect-error -- ambient Cloudflare Workers module, no local types
 import { env } from "cloudflare:workers";
+import type { GapTraceContext } from "./catalog-gap-registry";
 import { createSearchCatalogTool } from "./catalog-tool";
 import { validateTurn } from "./guardrails";
 import { SalesTurnOutputSchema, type SalesTurnOutput } from "./schemas";
@@ -186,6 +187,7 @@ async function generateOnce(
   candidateCap: number,
   conversationId: string,
   userId: string | null,
+  trace: GapTraceContext,
 ): Promise<SalesTurnOutput> {
   const startedAt = performance.now();
   try {
@@ -193,7 +195,7 @@ async function generateOnce(
       model: getModel(),
       system: buildSystemPrompt(candidateCap),
       prompt: promptText,
-      tools: { search_catalog: createSearchCatalogTool(store, conversationId, userId) },
+      tools: { search_catalog: createSearchCatalogTool(store, conversationId, userId, trace) },
       output: Output.object({ schema: SalesTurnOutputSchema }),
       stopWhen: isStepCount(5), // matches Python's Agent max_iter=5
     });
@@ -219,10 +221,18 @@ async function generateWithProviderRetry(
   candidateCap: number,
   conversationId: string,
   userId: string | null,
+  trace: GapTraceContext,
 ): Promise<GenerationOutcome> {
   for (let attempt = 0; attempt <= MAX_PROVIDER_RETRIES; attempt++) {
     try {
-      const output = await generateOnce(promptText, store, candidateCap, conversationId, userId);
+      const output = await generateOnce(
+        promptText,
+        store,
+        candidateCap,
+        conversationId,
+        userId,
+        trace,
+      );
       return { output };
     } catch (err) {
       if (NoOutputGeneratedError.isInstance(err)) {
@@ -273,6 +283,7 @@ export async function generateValidatedTurn(params: {
   rejectedProductLabels: readonly string[];
   conversationId: string;
   userId: string | null;
+  trace: GapTraceContext;
 }): Promise<GenerateValidatedTurnResult> {
   const {
     promptText,
@@ -282,6 +293,7 @@ export async function generateValidatedTurn(params: {
     rejectedProductLabels,
     conversationId,
     userId,
+    trace,
   } = params;
   let attemptPrompt = promptText;
   let lastError = "unknown validation error";
@@ -293,6 +305,7 @@ export async function generateValidatedTurn(params: {
       candidateCap,
       conversationId,
       userId,
+      trace,
     );
 
     if ("schemaError" in result) {

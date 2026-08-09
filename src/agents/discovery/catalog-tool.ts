@@ -1,6 +1,6 @@
 import { tool } from "ai";
 import { z } from "zod";
-import { recordZeroResultSignal } from "./catalog-gap-registry";
+import { recordZeroResultSignal, type GapTraceContext } from "./catalog-gap-registry";
 import type { ConversationStore } from "./state";
 
 /**
@@ -189,6 +189,7 @@ export function createSearchCatalogTool(
   store: ConversationStore,
   conversationId: string,
   userId: string | null,
+  trace: GapTraceContext,
 ) {
   return tool({
     description:
@@ -242,7 +243,7 @@ export function createSearchCatalogTool(
         // fixing another one.
         if (!args.restrict_to_ids || args.restrict_to_ids.length === 0) {
           const { limit: _limit, restrict_to_ids: _restrictToIds, ...filters } = args;
-          await recordZeroResultSignal(conversationId, userId, filters);
+          await recordZeroResultSignal(conversationId, userId, filters, trace);
         }
       }
 

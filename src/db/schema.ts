@@ -264,6 +264,16 @@ export const discoveryGapKind = pgEnum("discovery_gap_kind", [
 // (userId nullable, no FK) since this is an ops signal about catalog
 // gaps, not per-user data — unlike discoveryConversations, which only
 // exists for logged-in history.
+//
+// initialRequest/roundCount exist purely for traceability — "where does
+// this need come from" — so a signal is self-explanatory without a live
+// round-trip: initialRequest is the shopper's own opening ask (this.state.
+// initialRequest, agent.ts), roundCount is which round of that same
+// conversation produced it. The conversation's FULL transcript is never
+// duplicated here — it already lives forever in that conversation's own
+// DiscoveryAgent Durable Object (this.sql, never cleared), so the
+// insights page connects to it live (by conversationId, same as any
+// other reconnect) for the complete drill-down instead of copying it.
 export const discoveryCatalogGaps = pgTable("discovery_catalog_gaps", {
   id: uuid("id").primaryKey().defaultRandom(),
   conversationId: text("conversation_id").notNull(),
@@ -271,6 +281,8 @@ export const discoveryCatalogGaps = pgTable("discovery_catalog_gaps", {
   kind: discoveryGapKind("kind").notNull().default("rejection_summary"),
   summary: text("summary"),
   filters: jsonb("filters"),
+  initialRequest: text("initial_request"),
+  roundCount: integer("round_count"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

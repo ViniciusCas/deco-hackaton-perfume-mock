@@ -19,6 +19,11 @@ export interface RejectionSummarySignal {
   id: string;
   conversationId: string;
   summary: string;
+  /** The shopper's own opening ask in this conversation, and which round
+   * produced this signal — traceability context, not derived here (see
+   * schema.ts's discoveryCatalogGaps comment). */
+  initialRequest: string | null;
+  roundCount: number | null;
   createdAt: string;
 }
 
@@ -42,9 +47,18 @@ export interface CatalogFilters {
  * shopper's one-off filter (this file's grouping logic below). */
 export interface ZeroResultGroup {
   filters: CatalogFilters;
+  /** A short, deterministically-templated explanation of this filter
+   * combination (catalog-gap-registry.ts's describeZeroResultFilters) —
+   * every row in the group has the same one, since it's derived purely
+   * from `filters`. */
+  summary: string;
   count: number;
   lastSeenAt: string;
   exampleConversationId: string;
+  /** The opening ask from one representative conversation in the group
+   * (the most recent one) — traceability context, same reasoning as
+   * RejectionSummarySignal.initialRequest above. */
+  exampleInitialRequest: string | null;
 }
 
 export interface CatalogGapReport {
@@ -76,6 +90,8 @@ export const listCatalogGapsFn = createServerFn({ method: "GET" }).handler(
         kind: discoveryCatalogGaps.kind,
         summary: discoveryCatalogGaps.summary,
         filters: discoveryCatalogGaps.filters,
+        initialRequest: discoveryCatalogGaps.initialRequest,
+        roundCount: discoveryCatalogGaps.roundCount,
         createdAt: discoveryCatalogGaps.createdAt,
       })
       .from(discoveryCatalogGaps)
@@ -88,12 +104,17 @@ export const listCatalogGapsFn = createServerFn({ method: "GET" }).handler(
         id: r.id,
         conversationId: r.conversationId,
         summary: r.summary as string,
+        initialRequest: r.initialRequest,
+        roundCount: r.roundCount,
         createdAt: r.createdAt.toISOString(),
       }));
 
     // Group zero-result rows by their exact filter combination — a
     // single shopper's one-off empty query shouldn't read the same as
-    // three different shoppers all hitting the same empty filter.
+    // three different shoppers all hitting the same empty filter. Rows
+    // arrive newest-first (the query's ORDER BY), so the first row seen
+    // for a given key is always the most recent — that's the one kept
+    // as the group's representative example.
     const groups = new Map<string, ZeroResultGroup>();
     for (const r of rows) {
       if (r.kind !== "zero_result_query" || !r.filters) continue;
@@ -101,15 +122,14 @@ export const listCatalogGapsFn = createServerFn({ method: "GET" }).handler(
       const existing = groups.get(key);
       if (existing) {
         existing.count += 1;
-        if (r.createdAt.toISOString() > existing.lastSeenAt) {
-          existing.lastSeenAt = r.createdAt.toISOString();
-        }
       } else {
         groups.set(key, {
           filters: r.filters as CatalogFilters,
+          summary: r.summary ?? "",
           count: 1,
           lastSeenAt: r.createdAt.toISOString(),
           exampleConversationId: r.conversationId,
+          exampleInitialRequest: r.initialRequest,
         });
       }
     }
