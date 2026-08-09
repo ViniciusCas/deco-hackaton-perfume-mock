@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import Button from "~/components/ui/Button";
 import { useDiscoveryChat } from "~/agents/discovery/useDiscoveryChat";
-import { PROMPTS, useDiscoveryConversation } from "~/agents/discovery/useDiscoveryConversation";
+import { useDiscoveryConversation } from "~/agents/discovery/useDiscoveryConversation";
 
 /**
  * Discovery-chat UI — the real Agent behind the same two-column visual
@@ -200,20 +200,17 @@ export default function DiscoveryChat() {
 
           <div className="border-t border-line p-4">
             {(() => {
-              // Static PROMPTS only before the shopper's first real message
-              // — messages[0] is always the greeting once primed, so "no
-              // conversation yet" is length <= 1, not 0. There's no agent
-              // turn yet to source dynamic ones from at that point; every
-              // turn after that uses the Agent's own suggested_replies
-              // (schemas.ts), and the whole row disappears whenever the
-              // input itself is disabled — no point offering a reply that
-              // can't be sent.
+              // Chips are always the Agent's own suggested_replies
+              // (schemas.ts) — there are none before the shopper's first
+              // real message, since there's no agent turn yet to source
+              // them from. The whole row disappears whenever the input
+              // itself is disabled — no point offering a reply that can't
+              // be sent.
               const inputDisabled = connecting || busy || !!acceptedSet;
-              const chips = messages.length <= 1 ? PROMPTS : suggestedReplies;
-              if (inputDisabled || chips.length === 0) return null;
+              if (inputDisabled || suggestedReplies.length === 0) return null;
               return (
                 <div className="mb-3 flex flex-wrap gap-2">
-                  {chips.map((p) => (
+                  {suggestedReplies.map((p) => (
                     <button
                       key={p}
                       type="button"

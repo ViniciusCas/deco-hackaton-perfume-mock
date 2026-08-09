@@ -20,13 +20,6 @@ export const GREETING =
   "gift for someone special — and I'll find a few fragrances from our collection genuinely " +
   "worth trying, not just the bestsellers.";
 
-export const PROMPTS = [
-  "Something for evenings",
-  "Fresh and office-friendly",
-  "A gift for my sister",
-  "I wear amber and vanilla",
-];
-
 export interface ChatMessage {
   speaker: "advisor" | "shopper";
   content: string;

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "@tanstack/react-router";
 import { useDiscoveryChat } from "~/agents/discovery/useDiscoveryChat";
-import { PROMPTS, useDiscoveryConversation } from "~/agents/discovery/useDiscoveryConversation";
+import { useDiscoveryConversation } from "~/agents/discovery/useDiscoveryConversation";
 
 /**
  * Site-wide floating access to the discovery-chat Agent — the same
@@ -106,7 +106,6 @@ function DiscoveryBubblePanel({ open, onClose }: { open: boolean; onClose: () =>
   }
 
   const inputDisabled = connecting || busy || !!acceptedSet;
-  const chips = messages.length <= 1 ? PROMPTS : suggestedReplies;
 
   return (
     <div
@@ -248,9 +247,9 @@ function DiscoveryBubblePanel({ open, onClose }: { open: boolean; onClose: () =>
       </div>
 
       <div className="border-t border-line p-3">
-        {!inputDisabled && chips.length > 0 && (
+        {!inputDisabled && suggestedReplies.length > 0 && (
           <div className="mb-2 flex flex-wrap gap-1.5">
-            {chips.map((p) => (
+            {suggestedReplies.map((p) => (
               <button
                 key={p}
                 type="button"
