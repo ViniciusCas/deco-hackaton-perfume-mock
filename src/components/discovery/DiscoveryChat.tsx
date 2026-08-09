@@ -127,6 +127,23 @@ export default function DiscoveryChat() {
       await agent.ready;
       const history = await agent.call("getConversationHistory", []);
       if (history.length > 0) setMessages(history as ChatMessage[]);
+
+      // Restore the "Recommended"/"Your set" sidebar too, not just the
+      // transcript — pendingRecommendationLabels/finalRecommendationLabels
+      // were always persisted server-side (state.ts), so a reload or a
+      // switch back to an older conversation shouldn't lose them.
+      const { pending, accepted } = await agent.call("getRecommendationState", []);
+      if (accepted) {
+        setAcceptedSet(accepted);
+      } else if (pending) {
+        setRecommendation({
+          kind: "recommendation",
+          message: pending.message,
+          forced: false,
+          degraded: false,
+          products: pending.products,
+        });
+      }
     })();
   }, [connecting, activeConversationId, agent]);
 

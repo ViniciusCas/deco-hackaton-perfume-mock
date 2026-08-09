@@ -98,6 +98,34 @@ export class DiscoveryAgent extends Agent<Env, DiscoveryAgentState> {
     return this.store.historyForRound(this.state.roundCount);
   }
 
+  /** Lets a reconnecting/resumed client restore the "Recommended"/"Your
+   * set" sidebar, not just the chat transcript — `pendingRecommendationLabels`/
+   * `finalRecommendationLabels` were always persisted in `this.state`
+   * (state.ts), this just resolves them to real product data and pairs the
+   * pending case with the message that presented it (the last advisor
+   * line in the current round — the same text the original recommendation
+   * turn returned). */
+  @callable()
+  async getRecommendationState(): Promise<{
+    pending: { message: string; products: Awaited<ReturnType<typeof fetchProductsByIds>> } | null;
+    accepted: Awaited<ReturnType<typeof fetchProductsByIds>> | null;
+  }> {
+    if (this.state.isComplete && this.state.finalRecommendationLabels.length > 0) {
+      const ids = this.store.idsForLabels(this.state.finalRecommendationLabels);
+      return { pending: null, accepted: await fetchProductsByIds(ids) };
+    }
+    if (this.state.pendingRecommendationLabels.length > 0) {
+      const ids = this.store.idsForLabels(this.state.pendingRecommendationLabels);
+      const history = this.store.historyForRound(this.state.roundCount);
+      const lastAdvisorMessage = [...history].reverse().find((t) => t.speaker === "advisor");
+      return {
+        pending: { message: lastAdvisorMessage?.content ?? "", products: await fetchProductsByIds(ids) },
+        accepted: null,
+      };
+    }
+    return { pending: null, accepted: null };
+  }
+
   @callable({ streaming: true })
   async submitTurn(stream: StreamingResponse, reply: string): Promise<void> {
     try {
