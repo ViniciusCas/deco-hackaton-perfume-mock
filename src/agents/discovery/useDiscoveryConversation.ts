@@ -49,6 +49,13 @@ export function useDiscoveryConversation({
   const [suggestedReplies, setSuggestedReplies] = useState<string[]>([]);
   const [addingSlug, setAddingSlug] = useState<string | null>(null);
   const [addedSlugs, setAddedSlugs] = useState<Set<string>>(new Set());
+  // Whether this conversation already had turns in it the moment it was
+  // loaded/switched to — captured once at priming time, not derived from
+  // `messages.length` on every render, so it stays "existing" even once
+  // it's true (a brand-new chat where the shopper has now said something)
+  // and stays "new" for a truly fresh one even as it grows during this
+  // session. Starts `false` (not yet known) until priming resolves.
+  const [isExistingConversation, setIsExistingConversation] = useState(false);
   const primedFor = useRef<string | undefined>(undefined);
   const addToCart = useAddToCart();
 
@@ -85,9 +92,11 @@ export function useDiscoveryConversation({
     setAcceptedSet(null);
     setSuggestedReplies([]);
     setAddedSlugs(new Set());
+    setIsExistingConversation(false);
     (async () => {
       await agent.ready;
       const history = await agent.call("getConversationHistory", []);
+      setIsExistingConversation(history.length > 0);
       setMessages([{ speaker: "advisor", content: GREETING }, ...(history as ChatMessage[])]);
 
       // Restore the "Recommended"/"Your set" sidebar too, not just the
@@ -169,6 +178,7 @@ export function useDiscoveryConversation({
     suggestedReplies,
     addingSlug,
     addedSlugs,
+    isExistingConversation,
     ask,
     respond,
     addOne,

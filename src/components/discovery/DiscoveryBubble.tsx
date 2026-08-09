@@ -38,8 +38,13 @@ export default function DiscoveryBubble() {
           setEverOpened(true);
         }}
         aria-label={open ? "Close scent assistant chat" : "Open scent assistant chat"}
-        className="tap-scale flex size-14 items-center justify-center rounded-full bg-accent text-black shadow-lg"
+        className="tap-scale relative flex size-14 items-center justify-center rounded-full bg-accent text-black shadow-lg"
       >
+        {/* Attention ring — only before the shopper has ever opened the
+         * widget, so it invites a first click without pulsing forever. */}
+        {!everOpened && (
+          <span className="absolute inset-0 -z-10 animate-ping rounded-full bg-accent opacity-60" />
+        )}
         {open ? (
           <span className="text-xl leading-none">✕</span>
         ) : (
@@ -52,8 +57,17 @@ export default function DiscoveryBubble() {
 
 function DiscoveryBubblePanel({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [input, setInput] = useState("");
+  const [showHistory, setShowHistory] = useState(false);
   const chat = useDiscoveryChat();
-  const { agent, connecting, activeConversationId } = chat;
+  const {
+    agent,
+    connecting,
+    conversations,
+    activeConversationId,
+    canShowHistory,
+    newConversation,
+    switchConversation,
+  } = chat;
   const {
     messages,
     busy,
@@ -62,6 +76,7 @@ function DiscoveryBubblePanel({ open, onClose }: { open: boolean; onClose: () =>
     suggestedReplies,
     addingSlug,
     addedSlugs,
+    isExistingConversation,
     ask,
     respond,
     addOne,
@@ -80,6 +95,16 @@ function DiscoveryBubblePanel({ open, onClose }: { open: boolean; onClose: () =>
     await ask(text);
   }
 
+  function pickConversation(id: string) {
+    switchConversation(id);
+    setShowHistory(false);
+  }
+
+  function startNewConversation() {
+    newConversation();
+    setShowHistory(false);
+  }
+
   const inputDisabled = connecting || busy || !!acceptedSet;
   const chips = messages.length <= 1 ? PROMPTS : suggestedReplies;
 
@@ -93,12 +118,29 @@ function DiscoveryBubblePanel({ open, onClose }: { open: boolean; onClose: () =>
         <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent font-display text-sm text-black">
           S
         </div>
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
           <div className="font-display text-sm font-medium text-ink">Scent assistant</div>
           <div className="text-xs text-muted">
-            {connecting ? "Connecting…" : "Real recommendations from our catalog"}
+            {connecting
+              ? "Connecting…"
+              : isExistingConversation
+                ? "Continuing your conversation"
+                : "New conversation"}
           </div>
         </div>
+        {canShowHistory && (
+          <button
+            type="button"
+            onClick={() => setShowHistory((v) => !v)}
+            aria-label="Chat history"
+            aria-pressed={showHistory}
+            className={`tap-scale flex size-7 shrink-0 items-center justify-center rounded-sm text-ink-soft hover:bg-glass-strong ${
+              showHistory ? "bg-glass-strong text-ink" : ""
+            }`}
+          >
+            ☰
+          </button>
+        )}
         <button
           type="button"
           onClick={onClose}
@@ -109,68 +151,100 @@ function DiscoveryBubblePanel({ open, onClose }: { open: boolean; onClose: () =>
         </button>
       </div>
 
-      <div ref={scrollRef} className="flex flex-1 flex-col gap-3 overflow-y-auto p-4">
-        {messages.map((m, i) => (
-          <div
-            key={i}
-            className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
-              m.speaker === "advisor"
-                ? "self-start rounded-tl-md bg-blush-deep text-ink"
-                : "self-end rounded-tr-md bg-accent text-black"
-            }`}
-          >
-            {m.content}
-          </div>
-        ))}
-        {busy && (
-          <div className="flex gap-1.5 self-start rounded-2xl rounded-tl-md bg-blush-deep px-4 py-3">
-            <span className="size-1.5 animate-pulse rounded-full bg-muted" />
-            <span className="size-1.5 animate-pulse rounded-full bg-muted [animation-delay:0.2s]" />
-            <span className="size-1.5 animate-pulse rounded-full bg-muted [animation-delay:0.4s]" />
+      <div className="relative flex-1 overflow-hidden">
+        {showHistory && canShowHistory && (
+          <div className="absolute inset-0 z-10 flex flex-col gap-2 overflow-y-auto bg-surface p-3">
+            <button
+              type="button"
+              onClick={startNewConversation}
+              className="tap-scale rounded-sm bg-rose px-3 py-2 text-sm font-medium text-black"
+            >
+              + New chat
+            </button>
+            {conversations.length === 0 ? (
+              <p className="px-1 py-2 text-xs text-muted">No past conversations yet.</p>
+            ) : (
+              conversations.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => pickConversation(c.id)}
+                  className={`tap-scale truncate rounded-sm px-3 py-2 text-left text-sm ${
+                    c.id === activeConversationId
+                      ? "bg-blush-deep text-ink"
+                      : "text-ink-soft hover:bg-glass-strong"
+                  }`}
+                >
+                  {c.title}
+                </button>
+              ))
+            )}
           </div>
         )}
 
-        {recommendation && (
-          <div className="flex flex-col gap-2 rounded-lg border border-line bg-blush p-3">
-            {recommendation.products.map((p) => (
-              <div key={p.id} className="flex items-center gap-2">
-                <Link
-                  to={`/${p.slug}`}
-                  className="tap-scale min-w-0 flex-1 truncate text-sm font-medium text-ink"
-                >
-                  {p.name}
-                </Link>
+        <div ref={scrollRef} className="flex h-full flex-col gap-3 overflow-y-auto p-4">
+          {messages.map((m, i) => (
+            <div
+              key={i}
+              className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
+                m.speaker === "advisor"
+                  ? "self-start rounded-tl-md bg-blush-deep text-ink"
+                  : "self-end rounded-tr-md bg-accent text-black"
+              }`}
+            >
+              {m.content}
+            </div>
+          ))}
+          {busy && (
+            <div className="flex gap-1.5 self-start rounded-2xl rounded-tl-md bg-blush-deep px-4 py-3">
+              <span className="size-1.5 animate-pulse rounded-full bg-muted" />
+              <span className="size-1.5 animate-pulse rounded-full bg-muted [animation-delay:0.2s]" />
+              <span className="size-1.5 animate-pulse rounded-full bg-muted [animation-delay:0.4s]" />
+            </div>
+          )}
+
+          {recommendation && (
+            <div className="flex flex-col gap-2 rounded-lg border border-line bg-blush p-3">
+              {recommendation.products.map((p) => (
+                <div key={p.id} className="flex items-center gap-2">
+                  <Link
+                    to={`/${p.slug}`}
+                    className="tap-scale min-w-0 flex-1 truncate text-sm font-medium text-ink"
+                  >
+                    {p.name}
+                  </Link>
+                  <button
+                    type="button"
+                    aria-label={`Add ${p.name} to bag`}
+                    onClick={() => addOne(p)}
+                    disabled={addingSlug === p.slug || addedSlugs.has(p.slug)}
+                    className="tap-scale flex size-6 shrink-0 items-center justify-center rounded-full border border-line-strong text-sm leading-none text-ink disabled:opacity-50"
+                  >
+                    {addedSlugs.has(p.slug) ? "✓" : "+"}
+                  </button>
+                </div>
+              ))}
+              <div className="mt-1 flex gap-2">
                 <button
                   type="button"
-                  aria-label={`Add ${p.name} to bag`}
-                  onClick={() => addOne(p)}
-                  disabled={addingSlug === p.slug || addedSlugs.has(p.slug)}
-                  className="tap-scale flex size-6 shrink-0 items-center justify-center rounded-full border border-line-strong text-sm leading-none text-ink disabled:opacity-50"
+                  onClick={() => respond(true)}
+                  disabled={busy}
+                  className="tap-scale flex-1 rounded-sm bg-rose px-3 py-1.5 text-xs font-medium text-black disabled:opacity-50"
                 >
-                  {addedSlugs.has(p.slug) ? "✓" : "+"}
+                  Add set to bag
+                </button>
+                <button
+                  type="button"
+                  onClick={() => respond(false)}
+                  disabled={busy}
+                  className="tap-scale flex-1 rounded-sm border border-line-strong px-3 py-1.5 text-xs text-ink disabled:opacity-50"
+                >
+                  Something else
                 </button>
               </div>
-            ))}
-            <div className="mt-1 flex gap-2">
-              <button
-                type="button"
-                onClick={() => respond(true)}
-                disabled={busy}
-                className="tap-scale flex-1 rounded-sm bg-rose px-3 py-1.5 text-xs font-medium text-black disabled:opacity-50"
-              >
-                Add set to bag
-              </button>
-              <button
-                type="button"
-                onClick={() => respond(false)}
-                disabled={busy}
-                className="tap-scale flex-1 rounded-sm border border-line-strong px-3 py-1.5 text-xs text-ink disabled:opacity-50"
-              >
-                Something else
-              </button>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       <div className="border-t border-line p-3">
