@@ -225,6 +225,22 @@ export const wishlistItems = pgTable(
   (table) => [unique().on(table.customerId, table.productId)],
 );
 
+// One row per discovery-chat conversation, logged-in shoppers only — guests
+// get a single ephemeral session with nothing to list, so there's no guest
+// row here. `id` doubles as the DiscoveryAgent Durable Object's own
+// instance name (agent.ts), not a separately-generated key — a
+// conversation's identity in the DB and its identity as a live Agent are
+// the same uuid, so there's nothing to keep in sync between the two.
+export const discoveryConversations = pgTable("discovery_conversations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // customerId nullable + guestEmail covers guest checkout; shipping fields are
 // a snapshot (not an addresses FK) so guest orders — which have no address
 // book — and later address-book edits both work the same way.
@@ -285,6 +301,11 @@ export const userRelations = relations(user, ({ many }) => ({
   carts: many(carts),
   wishlistItems: many(wishlistItems),
   orders: many(orders),
+  discoveryConversations: many(discoveryConversations),
+}));
+
+export const discoveryConversationsRelations = relations(discoveryConversations, ({ one }) => ({
+  user: one(user, { fields: [discoveryConversations.userId], references: [user.id] }),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({

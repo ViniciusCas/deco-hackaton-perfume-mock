@@ -1,6 +1,8 @@
 import { useMemo } from "react";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useAgent } from "agents/react";
 import { useUser } from "~/platform/user";
+import { useDiscoveryConversations } from "~/platform/discovery";
 import {
   getStoredAuthToken,
   getStoredCartSession,
@@ -33,18 +35,34 @@ function resolveGuestSessionId(): string {
  * request/response shapes. Not a React Query hook: this is a live stateful
  * WebSocket connection, and ticket 10 explicitly ruled out forcing it
  * through React Query's fetch/cache model.
+ *
+ * Chat history (a later addition, logged-in shoppers only): a guest's
+ * identity is still the single fixed guest-session id above, unchanged —
+ * there's no "list of past conversations" for guests since
+ * conversation-registry.ts never persists anything for them. A logged-in
+ * shopper's identity is instead a per-conversation uuid: the `c` search
+ * param when present, else the most recently updated saved conversation,
+ * else a fresh one for a first-ever chat.
  */
 export function useDiscoveryChat() {
   const { user, isLoading } = useUser();
+  const search = useSearch({ from: "/discovery" });
+  const navigate = useNavigate({ from: "/discovery" });
 
-  // Deferred until auth state settles so the Agent is never opened under a
+  const { conversations, isLoading: conversationsLoading } = useDiscoveryConversations(!!user);
+
+  // Deferred until auth state (and, for logged-in shoppers, their
+  // conversation list) settles, so the Agent is never opened under a
   // throwaway identity and then reconnected once the real one is known —
   // `startClosed` below holds the socket closed until this resolves, then
   // the name change opens it under the real identity in one transition.
   const identity = useMemo(() => {
     if (isLoading || typeof window === "undefined") return undefined;
-    return user?.["@id"] ?? resolveGuestSessionId();
-  }, [isLoading, user]);
+    if (!user) return resolveGuestSessionId();
+    if (conversationsLoading) return undefined;
+    if (search.c) return search.c;
+    return conversations[0]?.id ?? crypto.randomUUID();
+  }, [isLoading, user, conversationsLoading, search.c, conversations]);
 
   // Ticket 03's wishlist signal (agent.ts's onConnect) needs a bearer token
   // to call sillage-api's auth-gated /v1/wishlist on the shopper's behalf.
@@ -53,13 +71,30 @@ export function useDiscoveryChat() {
   // comment) — not a new credential path. Absent for guests, which is
   // expected (wishlist is a logged-in-only signal, per ticket 03).
   const authToken = getStoredAuthToken();
+  const userId = user?.["@id"];
 
   const agent = useAgent<DiscoveryAgent, DiscoveryAgentState>({
     agent: "discovery-agent",
     name: identity ?? "pending",
     startClosed: !identity,
-    query: { authToken: authToken ?? "" },
+    query: { authToken: authToken ?? "", userId: userId ?? "" },
   });
 
-  return { agent, connecting: !identity };
+  function newConversation() {
+    navigate({ search: { c: crypto.randomUUID() } });
+  }
+
+  function switchConversation(id: string) {
+    navigate({ search: { c: id } });
+  }
+
+  return {
+    agent,
+    connecting: !identity,
+    conversations,
+    activeConversationId: identity,
+    canShowHistory: !!user,
+    newConversation,
+    switchConversation,
+  };
 }

@@ -68,7 +68,15 @@ function VialThumb({ name, size = 40 }: { name: string; size?: number }) {
 const LABEL_CLASS = "font-display text-2xs font-medium tracking-(--tracking-label) uppercase";
 
 export default function DiscoveryChat() {
-  const { agent, connecting } = useDiscoveryChat();
+  const {
+    agent,
+    connecting,
+    conversations,
+    activeConversationId,
+    canShowHistory,
+    newConversation,
+    switchConversation,
+  } = useDiscoveryChat();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -77,7 +85,7 @@ export default function DiscoveryChat() {
   const [suggestedReplies, setSuggestedReplies] = useState<string[]>([]);
   const [addingSlug, setAddingSlug] = useState<string | null>(null);
   const [addedSlugs, setAddedSlugs] = useState<Set<string>>(new Set());
-  const primed = useRef(false);
+  const primedFor = useRef<string | undefined>(undefined);
   const scrollRef = useRef<HTMLDivElement>(null);
   const addToCart = useAddToCart();
 
@@ -98,19 +106,28 @@ export default function DiscoveryChat() {
     }
   }
 
-  // One-shot history backfill for a resumed session (agent.ts's
-  // getConversationHistory) — guarded by a ref, not state, so dev-mode
-  // StrictMode's double-invoke doesn't double-fetch.
+  // History backfill for a resumed (or switched-to) conversation. Keyed on
+  // `activeConversationId` rather than firing once ever: switching
+  // conversations via the sidebar changes the Agent connection's `name`
+  // (useDiscoveryChat.ts), and this component's own local state has to
+  // reset to match — otherwise the previous conversation's messages/
+  // recommendation would linger under the new one. `primedFor` (the id
+  // last primed, not a boolean) both dedupes dev-mode StrictMode's
+  // double-invoke and detects a genuine conversation switch.
   useEffect(() => {
-    if (connecting || primed.current) return;
-    primed.current = true;
+    if (connecting || primedFor.current === activeConversationId) return;
+    primedFor.current = activeConversationId;
+    setMessages([]);
+    setRecommendation(null);
+    setAcceptedSet(null);
+    setSuggestedReplies([]);
+    setAddedSlugs(new Set());
     (async () => {
       await agent.ready;
       const history = await agent.call("getConversationHistory", []);
       if (history.length > 0) setMessages(history as ChatMessage[]);
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [connecting]);
+  }, [connecting, activeConversationId, agent]);
 
   useEffect(() => {
     requestAnimationFrame(() => {
@@ -180,7 +197,43 @@ export default function DiscoveryChat() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[1fr_380px]">
+      <div
+        className={`grid grid-cols-1 items-start gap-8 ${
+          canShowHistory ? "lg:grid-cols-[220px_1fr_380px]" : "lg:grid-cols-[1fr_380px]"
+        }`}
+      >
+        {canShowHistory && (
+          <aside className="flex h-[600px] flex-col gap-3 rounded-lg border border-line bg-surface p-4">
+            <button
+              type="button"
+              onClick={newConversation}
+              className="tap-scale rounded-sm bg-rose px-3 py-2 text-sm font-medium text-black"
+            >
+              + New chat
+            </button>
+            <div className="flex flex-1 flex-col gap-1 overflow-y-auto">
+              {conversations.length === 0 ? (
+                <p className="px-1 py-2 text-xs text-muted">No past conversations yet.</p>
+              ) : (
+                conversations.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => switchConversation(c.id)}
+                    className={`tap-scale truncate rounded-sm px-3 py-2 text-left text-sm ${
+                      c.id === activeConversationId
+                        ? "bg-blush-deep text-ink"
+                        : "text-ink-soft hover:bg-glass-strong"
+                    }`}
+                  >
+                    {c.title}
+                  </button>
+                ))
+              )}
+            </div>
+          </aside>
+        )}
+
         <section className="flex h-[600px] flex-col overflow-hidden rounded-lg border border-line bg-surface">
           <div className="flex items-center gap-3 border-b border-line px-6 py-4">
             <Avatar name="S" />

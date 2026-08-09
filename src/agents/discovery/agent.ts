@@ -1,5 +1,6 @@
 import { Agent, callable, type Connection, type ConnectionContext, type StreamingResponse } from "agents";
 import { fetchProductsByIds, fetchWishlistSummary } from "./catalog-tool";
+import { recordConversationStart, touchConversation } from "./conversation-registry";
 import {
   ConversationStore,
   INITIAL_DISCOVERY_AGENT_STATE,
@@ -63,16 +64,24 @@ export class DiscoveryAgent extends Agent<Env, DiscoveryAgentState> {
    * simply omits the line rather than blocking the conversation on it. */
   private wishlistSummary: string | null = null;
 
+  /** Set only for logged-in shoppers (useDiscoveryChat.ts's connection
+   * query param) — gates conversation-history persistence.
+   * conversation-registry.ts is never touched for guests: a single
+   * ephemeral session with nothing to list needs no DB row. */
+  private loggedInUserId: string | null = null;
+
   onStart(): void {
     this.store = new ConversationStore(this.sql.bind(this));
     this.store.ensureTables();
   }
 
   async onConnect(connection: Connection, ctx: ConnectionContext): Promise<void> {
-    const authToken = new URL(ctx.request.url).searchParams.get("authToken");
+    const params = new URL(ctx.request.url).searchParams;
+    const authToken = params.get("authToken");
     if (authToken) {
       this.wishlistSummary = await fetchWishlistSummary(authToken).catch(() => null);
     }
+    this.loggedInUserId = params.get("userId") || null;
   }
 
   @callable()
@@ -101,9 +110,16 @@ export class DiscoveryAgent extends Agent<Env, DiscoveryAgentState> {
         // starts, never appended to conversation_history, turnInRound
         // stays at 0 for this first render).
         this.setState({ ...this.state, initialRequest: reply });
+        if (this.loggedInUserId) {
+          await recordConversationStart(this.name, this.loggedInUserId, reply);
+        }
       } else {
         this.store.recordTurn(this.state.roundCount, "shopper", reply);
         this.setState({ ...this.state, turnInRound: this.state.turnInRound + 1 });
+      }
+
+      if (this.loggedInUserId) {
+        await touchConversation(this.name);
       }
 
       promptText = renderTurnPrompt({

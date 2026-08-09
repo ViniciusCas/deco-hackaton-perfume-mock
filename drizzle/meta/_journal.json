@@ -15,6 +15,13 @@
       "when": 1786137530682,
       "tag": "0001_clear_tarantula",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786243569028,
+      "tag": "0002_productive_synch",
+      "breakpoints": true
     }
   ]
 }
