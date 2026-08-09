@@ -74,6 +74,7 @@ export default function DiscoveryChat() {
   const [busy, setBusy] = useState(false);
   const [recommendation, setRecommendation] = useState<RecommendationTurn | null>(null);
   const [acceptedSet, setAcceptedSet] = useState<RecommendedProduct[] | null>(null);
+  const [suggestedReplies, setSuggestedReplies] = useState<string[]>([]);
   const [addingSlug, setAddingSlug] = useState<string | null>(null);
   const [addedSlugs, setAddedSlugs] = useState<Set<string>>(new Set());
   const primed = useRef(false);
@@ -120,6 +121,7 @@ export default function DiscoveryChat() {
   function applyResult(result: TurnResult) {
     setMessages((prev) => [...prev, { speaker: "advisor", content: result.message }]);
     setRecommendation(result.kind === "recommendation" ? result : null);
+    setSuggestedReplies(result.kind === "question" ? result.suggestedReplies : []);
   }
 
   async function ask(text: string) {
@@ -218,21 +220,30 @@ export default function DiscoveryChat() {
           </div>
 
           <div className="border-t border-line p-4">
-            {!acceptedSet && (
-              <div className="mb-3 flex flex-wrap gap-2">
-                {PROMPTS.map((p) => (
-                  <button
-                    key={p}
-                    type="button"
-                    onClick={() => ask(p)}
-                    disabled={connecting || busy}
-                    className="tap-scale rounded-sm border border-line-strong px-3.5 py-2 text-sm text-ink disabled:opacity-40"
-                  >
-                    {p}
-                  </button>
-                ))}
-              </div>
-            )}
+            {(() => {
+              // Static PROMPTS only for the very first message — there's no
+              // agent turn yet to source dynamic ones from. Every turn after
+              // that uses the Agent's own suggested_replies (schemas.ts),
+              // and the whole row disappears whenever the input itself is
+              // disabled — no point offering a reply that can't be sent.
+              const inputDisabled = connecting || busy || !!acceptedSet;
+              const chips = messages.length === 0 ? PROMPTS : suggestedReplies;
+              if (inputDisabled || chips.length === 0) return null;
+              return (
+                <div className="mb-3 flex flex-wrap gap-2">
+                  {chips.map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => ask(p)}
+                      className="tap-scale rounded-sm border border-line-strong px-3.5 py-2 text-sm text-ink"
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
             <div className="flex gap-2">
               <input
                 value={input}

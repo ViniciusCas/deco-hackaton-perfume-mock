@@ -39,6 +39,16 @@ export const SalesTurnOutputSchema = z.object({
         "recommended — the label field from the tool's result for each, never a label you " +
         "remember or invent. Empty array when is_final is false.",
     ),
+  suggested_replies: z
+    .array(z.string())
+    .max(4)
+    .describe(
+      "0 to 4 short, natural phrases the shopper could tap to answer 'message' directly, " +
+        "as if they'd typed that exact reply themselves — e.g. if 'message' asks about " +
+        "budget, suggestions might be 'Under $50', 'No real limit'. Only meaningful when " +
+        "is_final is false (there's a question to answer); always an empty array when " +
+        "is_final is true.",
+    ),
 });
 
 export type SalesTurnOutput = z.infer<typeof SalesTurnOutputSchema>;

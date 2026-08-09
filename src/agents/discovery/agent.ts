@@ -42,7 +42,7 @@ export interface Env {
  * note on finalRecommendationLabels for why this isn't Python's
  * text-blob recommendation). */
 export type TurnResult =
-  | { kind: "question"; message: string; degraded: boolean }
+  | { kind: "question"; message: string; degraded: boolean; suggestedReplies: string[] }
   | {
       kind: "recommendation";
       message: string;
@@ -235,6 +235,6 @@ export class DiscoveryAgent extends Agent<Env, DiscoveryAgentState> {
       return { kind: "recommendation", message, forced, degraded, products };
     }
 
-    return { kind: "question", message, degraded };
+    return { kind: "question", message, degraded, suggestedReplies: turn.suggested_replies };
   }
 }

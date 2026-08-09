@@ -64,7 +64,10 @@ function buildSystemPrompt(candidateCap: number): string {
     "Each round has a hard turn limit, enforced turn by turn in your prompt. Treat it as a " +
     "real deadline, not a suggestion: on your last allowed turn you must set is_final=true " +
     "and recommend from whatever shortlist you have — asking one more question is not an " +
-    "option at that point, even if you'd normally want more information first.";
+    "option at that point, even if you'd normally want more information first.\n\n" +
+    "Whenever is_final is false, also fill suggested_replies with a few short, natural " +
+    "answers to whatever you just asked in 'message' — real, distinct answers a shopper " +
+    "might actually give, not a restatement of the question itself.";
 
   return (
     `${STORE_DESCRIPTION}\n\n` +
@@ -308,6 +311,10 @@ export async function generateValidatedTurn(params: {
       is_final: false,
       updated_candidate_labels: [...previousCandidateLabels],
       recommended_product_labels: [],
+      // No suggested replies on the degraded fallback — a static
+      // safety-net set would be a second fallback-within-a-fallback for
+      // an already-rare path; the plain input still works.
+      suggested_replies: [],
     },
     degraded: true,
   };
