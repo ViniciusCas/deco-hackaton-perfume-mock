@@ -46,8 +46,15 @@ function resolveGuestSessionId(): string {
  */
 export function useDiscoveryChat() {
   const { user, isLoading } = useUser();
-  const search = useSearch({ from: "/discovery" });
-  const navigate = useNavigate({ from: "/discovery" });
+  // `strict: false` (not `from: "/discovery"`) deliberately — this hook now
+  // also backs DiscoveryBubble, mounted globally in the root layout, so it
+  // runs on every route, not just /discovery. `from: "/discovery"` throws
+  // ("Could not find an active match") the moment it's called from anywhere
+  // else; `strict: false` just reads whatever `c` the current route
+  // happens to have (only /discovery ever declares one, so this is `{}`
+  // everywhere else, which is exactly the "no override" case below).
+  const search = useSearch({ strict: false }) as { c?: string };
+  const navigate = useNavigate();
 
   const { conversations, isLoading: conversationsLoading } = useDiscoveryConversations(!!user);
 
@@ -81,11 +88,11 @@ export function useDiscoveryChat() {
   });
 
   function newConversation() {
-    navigate({ search: { c: crypto.randomUUID() } });
+    navigate({ to: "/discovery", search: { c: crypto.randomUUID() } });
   }
 
   function switchConversation(id: string) {
-    navigate({ search: { c: id } });
+    navigate({ to: "/discovery", search: { c: id } });
   }
 
   return {
