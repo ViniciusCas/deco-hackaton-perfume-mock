@@ -89,13 +89,20 @@ export class DiscoveryAgent extends Agent<Env, DiscoveryAgentState> {
     return "pong";
   }
 
-  /** Phase 6: lets a reconnecting client backfill the current round's
-   * transcript once on connect — a one-shot pull, not a continuous
-   * broadcast, so it doesn't reopen ticket 05's "don't put a growing list
-   * in `this.state`" decision (state.ts's header comment). */
+  /** Phase 6: lets a reconnecting client backfill the full transcript once
+   * on connect — a one-shot pull, not a continuous broadcast, so it
+   * doesn't reopen ticket 05's "don't put a growing list in `this.state`"
+   * decision (state.ts's header comment). Spans every round (not just the
+   * current one) since store.allHistory() keeps earlier rounds around on
+   * rollover — and prepends `initialRequest`, the opening shopper message,
+   * which is never written to conversation_history itself (submitTurn
+   * captures it separately, the same way Python's initial_request is kept
+   * outside the round loop). */
   @callable()
   getConversationHistory(): { speaker: string; content: string }[] {
-    return this.store.historyForRound(this.state.roundCount);
+    const history = this.store.allHistory();
+    if (this.state.initialRequest === "") return history;
+    return [{ speaker: "shopper", content: this.state.initialRequest }, ...history];
   }
 
   /** Lets a reconnecting/resumed client restore the "Recommended"/"Your

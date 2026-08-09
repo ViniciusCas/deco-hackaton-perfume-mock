@@ -150,6 +150,16 @@ export class ConversationStore {
     `;
   }
 
+  /** Every round's turns, in chronological order — for reconstructing a
+   * resumed client's full transcript. Distinct from historyForRound, which
+   * intentionally scopes the LLM's own prompt to just the current round
+   * (round_summaries carry the gist of earlier ones instead). */
+  allHistory(): { speaker: string; content: string }[] {
+    return this.sql<HistoryRow>`
+      SELECT round, speaker, content FROM conversation_history ORDER BY id ASC
+    `;
+  }
+
   // -- round_summaries: persist across rounds --
 
   addRoundSummary(round: number, summary: string): void {
