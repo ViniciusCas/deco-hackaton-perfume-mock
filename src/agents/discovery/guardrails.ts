@@ -109,5 +109,18 @@ export function validateTurn({
     };
   }
 
+  const leakedLabel = [...knownLabels].find((label) =>
+    new RegExp(`\\b${label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`).test(data.message),
+  );
+  if (leakedLabel) {
+    return {
+      ok: false,
+      error:
+        `The 'message' field contains an internal product label ("${leakedLabel}") — ` +
+        "shoppers must never see these. Rewrite 'message' using only product names, never " +
+        "labels/ids.",
+    };
+  }
+
   return ok;
 }
