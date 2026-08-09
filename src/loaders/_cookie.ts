@@ -11,7 +11,7 @@ export function readWishlistCookie(req: Request): WishlistState {
     const raw = decodeURIComponent(match.slice(WISHLIST_COOKIE.length + 1));
     const ids = JSON.parse(raw);
     return Array.isArray(ids) && ids.every((x) => typeof x === "string")
-      ? { productIDs: ids }
+      ? { productIds: ids }
       : EMPTY_WISHLIST;
   } catch {
     return EMPTY_WISHLIST;
@@ -19,7 +19,7 @@ export function readWishlistCookie(req: Request): WishlistState {
 }
 
 export function serializeWishlistCookie(state: WishlistState): string {
-  const value = encodeURIComponent(JSON.stringify(state.productIDs));
+  const value = encodeURIComponent(JSON.stringify(state.productIds));
   return `${WISHLIST_COOKIE}=${value}; Path=/; Max-Age=${WISHLIST_COOKIE_TTL}; SameSite=Lax`;
 }
 

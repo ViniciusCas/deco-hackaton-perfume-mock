@@ -1,7 +1,6 @@
 import { formatPrice } from "@decocms/apps-commerce/sdk/formatPrice";
 import { Link } from "@tanstack/react-router";
 import { clx } from "~/sdk/clx";
-import Image from "~/components/ui/Image";
 import Icon from "../ui/Icon";
 import Button from "../ui/Button";
 import { MINICART_DRAWER_ID } from "../../constants";
@@ -16,7 +15,7 @@ import {
 function QuantityStepper({ item }: { item: CartItem }) {
   const update = useUpdateCartItem();
   const set = (quantity: number) =>
-    update.mutate({ lineId: item.lineId, quantity: Math.max(1, quantity) });
+    update.mutate({ itemId: item.itemId, quantity: Math.max(1, quantity) });
   // No `pending` freeze: the quantity updates optimistically on click and the
   // "cart" mutation scope serializes the requests, so rapid clicks stay
   // consistent and the buttons remain interactive. Only the lower bound is
@@ -47,7 +46,7 @@ function QuantityStepper({ item }: { item: CartItem }) {
 
 function CartLine({ item, currency }: { item: CartItem; currency: string }) {
   const remove = useRemoveCartItem();
-  const removing = remove.isPending && remove.variables?.lineId === item.lineId;
+  const removing = remove.isPending && remove.variables?.itemId === item.itemId;
   return (
     <li
       className={clx(
@@ -56,12 +55,11 @@ function CartLine({ item, currency }: { item: CartItem; currency: string }) {
       )}
     >
       {item.image ? (
-        <Image
+        <img
           className="size-16 rounded-sm border border-line object-cover"
-          src={item.image.url}
-          alt={item.image.alt ?? item.title}
-          width={64}
-          height={64}
+          src={item.image}
+          alt={item.title}
+          referrerPolicy="no-referrer"
           loading="lazy"
         />
       ) : (
@@ -69,7 +67,7 @@ function CartLine({ item, currency }: { item: CartItem; currency: string }) {
       )}
       <div className="flex grow flex-col gap-1">
         <a
-          href={`/${item.productHandle}`}
+          href={`/${item.slug}`}
           className="line-clamp-2 text-sm font-medium text-ink hover:underline"
         >
           {item.title}
@@ -81,7 +79,7 @@ function CartLine({ item, currency }: { item: CartItem; currency: string }) {
             type="button"
             aria-label="Remove item"
             disabled={removing}
-            onClick={() => remove.mutate({ lineId: item.lineId })}
+            onClick={() => remove.mutate({ itemId: item.itemId })}
             className="tap-scale flex size-7 items-center justify-center text-muted hover:text-ink"
           >
             <Icon id="trash" size={16} />
@@ -106,6 +104,11 @@ function EmptyState() {
   );
 }
 
+function closeMinicart() {
+  const toggle = document.getElementById(MINICART_DRAWER_ID) as HTMLInputElement | null;
+  if (toggle) toggle.checked = false;
+}
+
 function Footer({ cart }: { cart: CartState }) {
   return (
     <footer className="w-full border-t border-line">
@@ -122,22 +125,14 @@ function Footer({ cart }: { cart: CartState }) {
         <Link
           to="/cart"
           preload="intent"
+          onClick={closeMinicart}
           className="tap-scale flex h-10 items-center justify-center rounded-sm border border-line-strong font-display text-2xs font-medium tracking-(--tracking-label) text-ink uppercase"
         >
           View full bag
         </Link>
-        {cart.checkoutUrl ? (
-          <a
-            href={cart.checkoutUrl}
-            className="tap-scale flex h-10 items-center justify-center rounded-sm bg-rose font-display text-2xs font-medium tracking-(--tracking-label) text-black uppercase hover:bg-rose-deep hover:text-white"
-          >
-            Begin checkout
-          </a>
-        ) : (
-          <Button type="button" variant="solid" size="md" disabled>
-            Begin checkout
-          </Button>
-        )}
+        <Button href="/checkout" variant="solid" size="md" onClick={closeMinicart}>
+          Begin checkout
+        </Button>
       </div>
     </footer>
   );
@@ -171,7 +166,7 @@ export default function Minicart() {
         <>
           <ul className="grow overflow-y-auto px-4">
             {cart.items.map((item) => (
-              <CartLine key={item.lineId} item={item} currency={currency} />
+              <CartLine key={item.itemId} item={item} currency={currency} />
             ))}
           </ul>
           <Footer cart={cart} />

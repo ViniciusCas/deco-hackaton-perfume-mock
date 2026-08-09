@@ -12,8 +12,17 @@
 	// Tail-worker observability (Strategy B in the original deco template)
 	// pointed at deco-otel-tail, a tail worker that lives in deco's own
 	// Cloudflare account and requires the paid Workers plan — not usable from
-	// an independent account. Removed. Add your own tail_consumers here if
-	// you stand up equivalent error-tail monitoring later.
+	// an independent account. Removed.
+	//
+	// Re-added below for a different purpose: ticket 08's decided
+	// observability backbone for the DiscoveryAgent Durable Object
+	// specifically (see discovery-agent-tail/ and
+	// sales-agent/.scratch/discovery-agent-architecture/build-plan.md Phase
+	// 5/7) — this Worker's own `instrumentWorker` pipeline never reaches
+	// code running inside a Durable Object, confirmed by reading its source
+	// (otel.ts), so this is a separate, necessary mechanism, not a
+	// duplicate of the old deco-otel-tail setup above.
+	"tail_consumers": [{ "service": "sillage-discovery-tail" }],
 	// Worker version (build SHA / deployment id) — surfaced as
 	// `service.version` on every span / log line by `instrumentWorker`.
 	"version_metadata": {
@@ -38,6 +47,19 @@
 			"binding": "SITES_KV",
 			"id": "b49bb9a9c6b941868d7810752407e9d1"
 		}
+	],
+	// Discovery-chat Agent (Cloudflare Agents SDK, see
+	// sales-agent/.scratch/discovery-agent-architecture/build-plan.md Phase 1).
+	// Every Agent class needs its own binding + its own new_sqlite_classes
+	// migration entry below — never edit an existing migration tag, add a new
+	// one for new classes.
+	"durable_objects": {
+		"bindings": [
+			{ "name": "DISCOVERY_AGENT", "class_name": "DiscoveryAgent" }
+		]
+	},
+	"migrations": [
+		{ "tag": "v1", "new_sqlite_classes": ["DiscoveryAgent"] }
 	],
 	// Observability — three-channel model (Strategy B, see decocms/deco-start D-8).
 	//
@@ -81,6 +103,11 @@
 		"DECO_OTEL_ERROR_PROMOTION": "true",
 		"DECO_OTEL_ERROR_PROMOTION_RATE": "0.1",
 		"DECO_OTEL_LOGS_MIN_LEVEL": "debug"
-		// DECO_OTEL_AUTH_TOKEN goes as a secret: wrangler secret put DECO_OTEL_AUTH_TOKEN
-	}
+	},
+	"hyperdrive": [
+		{
+			"binding": "HYPERDRIVE",
+			"id": "5ffc8bf2c071488eab04135667fce6f3"
+		}
+	]
 }

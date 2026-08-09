@@ -1,5 +1,5 @@
 export interface WishlistState {
-  productIDs: string[];
+  productIds: string[];
 }
 
-export const EMPTY_WISHLIST: WishlistState = { productIDs: [] };
+export const EMPTY_WISHLIST: WishlistState = { productIds: [] };

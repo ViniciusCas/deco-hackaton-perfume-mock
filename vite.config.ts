@@ -5,6 +5,7 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "vite";
 import path from "path";
+import agentsVitePlugin from "agents/vite";
 
 const srcDir = path.resolve(__dirname, "src");
 
@@ -16,7 +17,19 @@ export default defineConfig({
     // the store's custom domain).
   },
   plugins: [
-    cloudflare({ viteEnvironment: { name: "ssr" } }),
+    // Handles TC39 decorator transforms for @callable() (Vite's default
+    // Oxc transpiler doesn't support them yet — oxc#9170) — needed for
+    // src/agents/discovery/agent.ts. Must run before other transforms see
+    // that code.
+    ...agentsVitePlugin(),
+    cloudflare({
+      viteEnvironment: { name: "ssr" },
+      // Ticket 08's Tail Worker (sales-agent/.scratch/discovery-agent-architecture's
+      // build-plan.md Phase 5/7) — runs alongside the main worker in local
+      // dev via Miniflare's own tail-event simulation, so `discovery-tail:*`
+      // console output shows up in this same `npm run dev` process.
+      auxiliaryWorkers: [{ configPath: "./discovery-agent-tail/wrangler.jsonc" }],
+    }),
     tanstackStart({ server: { entry: "server" } }),
     react({
       babel: {

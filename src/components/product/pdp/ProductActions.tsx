@@ -80,7 +80,7 @@ export default function ProductActions({ product, analyticsItem, isInStock, copy
         variant="glass"
         size="md"
         {...eventAttrs}
-        onClick={() => addToCart.mutate({ merchandiseId: product.productID, quantity: 1 })}
+        onClick={() => addToCart.mutate({ variantId: product.productID, quantity: 1 })}
         disabled={addToCart.isPending}
       >
         {label}

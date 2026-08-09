@@ -1,56 +1,28 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getRequest, getResponse } from "@tanstack/react-start/server";
-import { addItems, getCart, updateItems } from "@decocms/apps-shopify";
-import { shopifyCartToCartState } from "./cart.shopify";
+import { getRequest } from "@tanstack/react-start/server";
+import { fetchSillageApi, sillageApiHeaders } from "~/db/sillage-api";
 import type { CartState } from "./cart.types";
 
-export const getCartServerFn = createServerFn({ method: "GET" }).handler(
-  async (): Promise<CartState> => {
+/**
+ * SSR-only cart prefetch for the root route's beforeLoad — see
+ * .scratch/backend-api/issues/09-guest-cart-ssr.md. `getRequest()` can't be
+ * called directly from `beforeLoad` (that file is also bundled client-side);
+ * wrapping it in createServerFn keeps it server-only, matching every other
+ * SSR data fetch in this codebase (getUserServerFn, getCatalogServerFn).
+ *
+ * Only fetches when SSR already has something to identify the cart with (a
+ * signed-in session cookie or an existing guest cart-session cookie) — a
+ * brand-new guest gets no prefetch, since creating a cart from SSR with no
+ * way to hand its session id back to the client would just orphan it.
+ */
+export const getCartSsrServerFn = createServerFn({ method: "GET" }).handler(
+  async (): Promise<CartState | null> => {
     const request = getRequest();
-    const response = getResponse();
-    const cart = await getCart(request.headers, response.headers);
-    return shopifyCartToCartState(cart);
+    const headers = sillageApiHeaders(request);
+    if (Object.keys(headers).length === 0) return null;
+
+    const res = await fetchSillageApi(request, "/v1/cart");
+    const body = (await res.json().catch(() => ({}))) as { data?: CartState };
+    return body.data ?? null;
   },
 );
-
-export const addItemServerFn = createServerFn({ method: "POST" })
-  .inputValidator((input: { merchandiseId: string; quantity?: number }) => input)
-  .handler(async (ctx): Promise<CartState> => {
-    const request = getRequest();
-    const response = getResponse();
-    const cart = await addItems({
-      lines: {
-        merchandiseId: ctx.data.merchandiseId,
-        quantity: ctx.data.quantity ?? 1,
-      },
-      requestHeaders: request.headers,
-      responseHeaders: response.headers,
-    });
-    return shopifyCartToCartState(cart);
-  });
-
-export const updateItemQuantityServerFn = createServerFn({ method: "POST" })
-  .inputValidator((input: { lineId: string; quantity: number }) => input)
-  .handler(async (ctx): Promise<CartState> => {
-    const request = getRequest();
-    const response = getResponse();
-    const cart = await updateItems({
-      lines: [{ id: ctx.data.lineId, quantity: ctx.data.quantity }],
-      requestHeaders: request.headers,
-      responseHeaders: response.headers,
-    });
-    return shopifyCartToCartState(cart);
-  });
-
-export const removeItemServerFn = createServerFn({ method: "POST" })
-  .inputValidator((input: { lineId: string }) => input)
-  .handler(async (ctx): Promise<CartState> => {
-    const request = getRequest();
-    const response = getResponse();
-    const cart = await updateItems({
-      lines: [{ id: ctx.data.lineId, quantity: 0 }],
-      requestHeaders: request.headers,
-      responseHeaders: response.headers,
-    });
-    return shopifyCartToCartState(cart);
-  });

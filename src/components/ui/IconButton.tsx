@@ -9,11 +9,20 @@ export interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
   size?: "sm" | "md";
   iconSize?: number;
   filled?: boolean;
+  /** Icon/text color while `active` — "ink" (default, search/menu toggles)
+   * or "rose" (a real red, for the wishlist heart — `text-ink` on `active`
+   * read as near-black, not visibly "wishlisted red"). */
+  activeTone?: "ink" | "rose";
 }
 
 const SIZE_CLASS = {
   sm: "size-8",
   md: "size-10",
+};
+
+const ACTIVE_TONE_CLASS = {
+  ink: "glass-strong text-ink",
+  rose: "glass-strong text-error",
 };
 
 /**
@@ -28,6 +37,7 @@ export default function IconButton({
   size = "sm",
   iconSize = 16,
   filled = false,
+  activeTone = "ink",
   className,
   ...props
 }: Props) {
@@ -39,7 +49,7 @@ export default function IconButton({
       className={clx(
         "tap-scale relative inline-flex items-center justify-center rounded-sm transition-colors duration-(--duration-fast)",
         "before:absolute before:-inset-[6px] before:content-['']", // 44px+ hit area
-        active ? "glass-strong text-ink" : "frost text-ink hover:bg-glass-strong",
+        active ? ACTIVE_TONE_CLASS[activeTone] : "frost text-ink hover:bg-glass-strong",
         SIZE_CLASS[size],
         className,
       )}

@@ -5,31 +5,32 @@ export interface CartItemPrice {
 
 export interface CartItem {
   /** Cart line ID — use for update/remove operations. */
-  lineId: string;
-  /** Merchandise/variant ID — what was added. */
-  merchandiseId: string;
+  itemId: string;
+  /** Variant ID — what was added. */
+  variantId: string;
+  productId: string;
+  slug: string;
   title: string;
-  productHandle: string;
-  image?: { url: string; alt?: string };
+  size: string;
+  image?: string;
   price: CartItemPrice;
-  compareAtPrice?: CartItemPrice;
   quantity: number;
 }
 
 export interface CartState {
   id: string | null;
+  sessionToken: string | null;
   items: CartItem[];
   subtotal: CartItemPrice;
   total: CartItemPrice;
-  checkoutUrl: string | null;
   totalQuantity: number;
 }
 
 export const EMPTY_CART: CartState = {
   id: null,
+  sessionToken: null,
   items: [],
   subtotal: { amount: 0, currencyCode: "USD" },
   total: { amount: 0, currencyCode: "USD" },
-  checkoutUrl: null,
   totalQuantity: 0,
 };

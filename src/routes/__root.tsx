@@ -1,9 +1,10 @@
-import { createRootRouteWithContext } from "@tanstack/react-router";
+import { createRootRouteWithContext, useRouterState } from "@tanstack/react-router";
 import type { QueryClient } from "@tanstack/react-query";
 import { DecoRootLayout } from "@decocms/tanstack";
-import { CART_QUERY_KEY, getCartServerFn } from "../platform/cart";
 import { getUserServerFn, USER_QUERY_KEY } from "../platform/user";
+import { CART_QUERY_KEY, getCartSsrServerFn } from "../platform/cart";
 import MinicartDrawer from "../components/minicart/MinicartDrawer";
+import DiscoveryBubble from "../components/discovery/DiscoveryBubble";
 import Header from "../sections/Header/Header";
 import Footer from "../sections/Footer/Footer";
 // @ts-ignore Vite ?url import
@@ -39,10 +40,18 @@ const FOOTER_LINKS = [
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   beforeLoad: async ({ context }) => {
     const tasks: Promise<unknown>[] = [];
+    // Cart prefetch only runs when SSR already has *something* to identify
+    // the cart with — a signed-in session cookie or an existing guest
+    // cart-session cookie (see .scratch/backend-api/issues/09-guest-cart-ssr.md).
+    // A brand-new guest (neither cookie present yet) still gets the
+    // post-hydration flash: creating a cart from SSR with no way to hand
+    // its session id back to the client would just orphan it.
     if (!context.queryClient.getQueryData(CART_QUERY_KEY)) {
       tasks.push(
-        getCartServerFn()
-          .then((cart) => context.queryClient.setQueryData(CART_QUERY_KEY, cart))
+        getCartSsrServerFn()
+          .then((cart) => {
+            if (cart) context.queryClient.setQueryData(CART_QUERY_KEY, cart);
+          })
           .catch(() => {}),
       );
     }
@@ -69,13 +78,20 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: "https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600&family=Instrument+Sans:wght@400;500;600&display=swap",
       },
       { rel: "stylesheet", href: appCss },
-      { rel: "icon", href: "/favicon.ico" },
+      { rel: "icon", href: "/image/sillage_logo.svg", type: "image/svg+xml" },
+      { rel: "icon", href: "/favicon.ico", sizes: "any" },
     ],
   }),
   component: RootLayout,
 });
 
 function RootLayout() {
+  // The insights pages are an ops surface for reading what the discovery
+  // agent has surfaced, not a shopper-facing page — the bubble would be
+  // both noise and a confusing "chat about the chat" loop there.
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const hideDiscoveryBubble = pathname.startsWith("/insights");
+
   return (
     <DecoRootLayout lang="en" siteName={SITE_NAME}>
       {/*
@@ -92,6 +108,7 @@ function RootLayout() {
         shippingNote="Complimentary shipping over $80 · Two samples with every order"
       />
       <MinicartDrawer />
+      {!hideDiscoveryBubble && <DiscoveryBubble />}
       <Footer
         siteName={SITE_NAME}
         newsletterNote="New releases and refill restocks, once a month."

@@ -1,5 +1,6 @@
 export type { CartItem, CartItemPrice, CartState } from "./cart.types";
 export { EMPTY_CART } from "./cart.types";
+export { getCartSsrServerFn } from "./cart.actions";
 export {
   CART_QUERY_KEY,
   useAddToCart,
@@ -7,9 +8,3 @@ export {
   useRemoveCartItem,
   useUpdateCartItem,
 } from "./cart.hooks";
-export {
-  addItemServerFn,
-  getCartServerFn,
-  removeItemServerFn,
-  updateItemQuantityServerFn,
-} from "./cart.actions";

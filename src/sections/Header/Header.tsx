@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { HTMLWidget, ImageWidget } from "~/types/widgets";
 import type { SiteNavigationElement } from "@decocms/apps-commerce/types";
 import { Link } from "@tanstack/react-router";
@@ -7,6 +8,7 @@ import HeaderNav from "../../components/header/HeaderNav";
 import Menu from "../../components/header/Menu";
 import SearchOverlay from "../../components/header/SearchOverlay";
 import SignIn from "../../components/header/SignIn";
+import WishlistLink from "../../components/header/WishlistLink";
 import { type SearchbarProps } from "../../components/search/Searchbar/Form";
 import Drawer from "../../components/ui/Drawer";
 import Icon from "../../components/ui/Icon";
@@ -99,6 +101,7 @@ const Desktop = ({ navItems, logo, siteName }: Props) => (
       <label htmlFor={SEARCH_OVERLAY_ID} aria-label="Search" className={ICON_BUTTON_CLASS}>
         <Icon id="search" size={19} />
       </label>
+      <WishlistLink />
       <SignIn />
       <Bag />
     </div>
@@ -139,11 +142,20 @@ function Header({
   ...props
 }: Props) {
   const device = useDevice();
+  const [shippingNoteDismissed, setShippingNoteDismissed] = useState(false);
   return (
     <header className="fixed inset-x-0 top-0 z-50">
-      {shippingNote && (
-        <div className="flex h-[34px] items-center justify-center bg-rose px-4 text-center font-display text-2xs font-medium tracking-(--tracking-label) text-black uppercase">
+      {shippingNote && !shippingNoteDismissed && (
+        <div className="relative flex h-[34px] items-center justify-center bg-rose px-10 text-center font-display text-2xs font-medium tracking-(--tracking-label) text-black uppercase">
           {shippingNote}
+          <button
+            type="button"
+            aria-label="Dismiss"
+            onClick={() => setShippingNoteDismissed(true)}
+            className="tap-scale absolute right-2 flex size-7 items-center justify-center rounded-sm text-black/70 hover:bg-black/10 hover:text-black"
+          >
+            <Icon id="close" size={14} />
+          </button>
         </div>
       )}
 

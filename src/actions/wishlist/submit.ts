@@ -23,7 +23,7 @@ async function action(props: Props, req?: Request): Promise<WishlistState> {
     //     : await invoke("vtex/actions/wishlist/addItem.ts", {
     //         sku: props.productID, productId: props.productGroupID,
     //       });
-    //   return { productIDs: next.map((i) => i.sku) };
+    //   return { productIds: next.map((i) => i.sku) };
   }
   if (platform === "wake") {
     // TODO(consumer): wire wake wishlist endpoint here.
@@ -31,11 +31,11 @@ async function action(props: Props, req?: Request): Promise<WishlistState> {
 
   // Default: cookie-backed so the demo persists per-browser without a backend.
   const current = request ? readWishlistCookie(request) : EMPTY_WISHLIST;
-  const next: WishlistState = current.productIDs.includes(props.productID)
+  const next: WishlistState = current.productIds.includes(props.productID)
     ? {
-        productIDs: current.productIDs.filter((id) => id !== props.productID),
+        productIds: current.productIds.filter((id) => id !== props.productID),
       }
-    : { productIDs: [...current.productIDs, props.productID] };
+    : { productIds: [...current.productIds, props.productID] };
 
   RequestContext.responseHeaders.append("Set-Cookie", serializeWishlistCookie(next));
   return next;

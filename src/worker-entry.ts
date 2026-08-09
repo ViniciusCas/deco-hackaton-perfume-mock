@@ -23,6 +23,11 @@ import {
 import { getCookies } from "@decocms/apps-shopify/utils/cookies";
 import { withABTesting } from "@decocms/blocks/sdk/abTesting";
 
+// Cloudflare requires a Durable Object class to be exported from the
+// module named in wrangler.jsonc's `main` (this file) for its DO binding
+// (DISCOVERY_AGENT) to resolve — a plain import elsewhere isn't enough.
+export { DiscoveryAgent } from "./agents/discovery/agent";
+
 const serverEntry = createServerEntry({ fetch: handler.fetch });
 
 const CSP_DIRECTIVES = [
