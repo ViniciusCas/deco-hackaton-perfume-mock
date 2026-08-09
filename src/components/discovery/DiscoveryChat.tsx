@@ -85,6 +85,7 @@ export default function DiscoveryChat() {
   const [suggestedReplies, setSuggestedReplies] = useState<string[]>([]);
   const [addingSlug, setAddingSlug] = useState<string | null>(null);
   const [addedSlugs, setAddedSlugs] = useState<Set<string>>(new Set());
+  const [historyCollapsed, setHistoryCollapsed] = useState(false);
   const primedFor = useRef<string | undefined>(undefined);
   const scrollRef = useRef<HTMLDivElement>(null);
   const addToCart = useAddToCart();
@@ -183,7 +184,7 @@ export default function DiscoveryChat() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-4 pt-[90px] pb-10 sm:px-8 sm:pt-[110px] sm:pb-14">
+    <div className="mx-auto max-w-[1600px] px-4 pt-[90px] pb-10 sm:px-8 sm:pt-[110px] sm:pb-14">
       <div className="mt-4 mb-8 flex flex-col gap-4 sm:mt-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <div className={`${LABEL_CLASS} mb-3 text-ink`}>Discovery</div>
@@ -199,38 +200,66 @@ export default function DiscoveryChat() {
 
       <div
         className={`grid grid-cols-1 items-start gap-8 ${
-          canShowHistory ? "lg:grid-cols-[220px_1fr_380px]" : "lg:grid-cols-[1fr_380px]"
+          canShowHistory
+            ? historyCollapsed
+              ? "lg:grid-cols-[56px_1fr_380px]"
+              : "lg:grid-cols-[220px_1fr_380px]"
+            : "lg:grid-cols-[1fr_380px]"
         }`}
       >
         {canShowHistory && (
           <aside className="flex h-[600px] flex-col gap-3 rounded-lg border border-line bg-surface p-4">
-            <button
-              type="button"
-              onClick={newConversation}
-              className="tap-scale rounded-sm bg-rose px-3 py-2 text-sm font-medium text-black"
-            >
-              + New chat
-            </button>
-            <div className="flex flex-1 flex-col gap-1 overflow-y-auto">
-              {conversations.length === 0 ? (
-                <p className="px-1 py-2 text-xs text-muted">No past conversations yet.</p>
-              ) : (
-                conversations.map((c) => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => switchConversation(c.id)}
-                    className={`tap-scale truncate rounded-sm px-3 py-2 text-left text-sm ${
-                      c.id === activeConversationId
-                        ? "bg-blush-deep text-ink"
-                        : "text-ink-soft hover:bg-glass-strong"
-                    }`}
-                  >
-                    {c.title}
-                  </button>
-                ))
+            <div className={`flex items-center gap-2 ${historyCollapsed ? "flex-col" : ""}`}>
+              <button
+                type="button"
+                onClick={() => setHistoryCollapsed((v) => !v)}
+                aria-label={historyCollapsed ? "Expand chat history" : "Collapse chat history"}
+                className="tap-scale flex size-8 shrink-0 items-center justify-center rounded-sm border border-line-strong text-ink"
+              >
+                {historyCollapsed ? "»" : "«"}
+              </button>
+              {!historyCollapsed && (
+                <button
+                  type="button"
+                  onClick={newConversation}
+                  className="tap-scale flex-1 rounded-sm bg-rose px-3 py-2 text-sm font-medium text-black"
+                >
+                  + New chat
+                </button>
+              )}
+              {historyCollapsed && (
+                <button
+                  type="button"
+                  onClick={newConversation}
+                  aria-label="New chat"
+                  className="tap-scale flex size-8 shrink-0 items-center justify-center rounded-sm bg-rose text-sm font-medium text-black"
+                >
+                  +
+                </button>
               )}
             </div>
+            {!historyCollapsed && (
+              <div className="flex flex-1 flex-col gap-1 overflow-y-auto">
+                {conversations.length === 0 ? (
+                  <p className="px-1 py-2 text-xs text-muted">No past conversations yet.</p>
+                ) : (
+                  conversations.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => switchConversation(c.id)}
+                      className={`tap-scale truncate rounded-sm px-3 py-2 text-left text-sm ${
+                        c.id === activeConversationId
+                          ? "bg-blush-deep text-ink"
+                          : "text-ink-soft hover:bg-glass-strong"
+                      }`}
+                    >
+                      {c.title}
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
           </aside>
         )}
 
