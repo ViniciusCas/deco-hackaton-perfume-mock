@@ -2,9 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import Button from "~/components/ui/Button";
 import { useDiscoveryChat } from "~/agents/discovery/useDiscoveryChat";
-import type { TurnResult } from "~/agents/discovery/agent";
-import { fetchProductVariants } from "~/platform/catalog/products.hooks";
-import { useAddToCart } from "~/platform/cart";
+import { PROMPTS, useDiscoveryConversation } from "~/agents/discovery/useDiscoveryConversation";
 
 /**
  * Discovery-chat UI — the real Agent behind the same two-column visual
@@ -24,27 +22,6 @@ import { useAddToCart } from "~/platform/cart";
  * actions are accept/reject on the Agent's current recommendation, not
  * per-item toggles.
  */
-
-const GREETING =
-  "Hi, I'm your scent assistant — think of me as a knowledgeable friend behind the counter. " +
-  "Tell me who this is for and where they'll wear it — a normal work day, a night out, a " +
-  "gift for someone special — and I'll find a few fragrances from our collection genuinely " +
-  "worth trying, not just the bestsellers.";
-
-const PROMPTS = [
-  "Something for evenings",
-  "Fresh and office-friendly",
-  "A gift for my sister",
-  "I wear amber and vanilla",
-];
-
-interface ChatMessage {
-  speaker: "advisor" | "shopper";
-  content: string;
-}
-
-type RecommendationTurn = Extract<TurnResult, { kind: "recommendation" }>;
-type RecommendedProduct = RecommendationTurn["products"][number];
 
 function Avatar({ name, size = 40 }: { name: string; size?: number }) {
   return (
@@ -71,6 +48,7 @@ function VialThumb({ name, size = 40 }: { name: string; size?: number }) {
 const LABEL_CLASS = "font-display text-2xs font-medium tracking-(--tracking-label) uppercase";
 
 export default function DiscoveryChat() {
+  const chat = useDiscoveryChat();
   const {
     agent,
     connecting,
@@ -79,76 +57,22 @@ export default function DiscoveryChat() {
     canShowHistory,
     newConversation,
     switchConversation,
-  } = useDiscoveryChat();
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  } = chat;
+  const {
+    messages,
+    busy,
+    recommendation,
+    acceptedSet,
+    suggestedReplies,
+    addingSlug,
+    addedSlugs,
+    ask,
+    respond,
+    addOne,
+  } = useDiscoveryConversation(chat);
   const [input, setInput] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [recommendation, setRecommendation] = useState<RecommendationTurn | null>(null);
-  const [acceptedSet, setAcceptedSet] = useState<RecommendedProduct[] | null>(null);
-  const [suggestedReplies, setSuggestedReplies] = useState<string[]>([]);
-  const [addingSlug, setAddingSlug] = useState<string | null>(null);
-  const [addedSlugs, setAddedSlugs] = useState<Set<string>>(new Set());
   const [historyCollapsed, setHistoryCollapsed] = useState(false);
-  const primedFor = useRef<string | undefined>(undefined);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const addToCart = useAddToCart();
-
-  // Per-item "+" on a recommended product — resolves a default variant
-  // (in-stock preferred, same fallback PDP uses) and adds it directly,
-  // independent of the whole-set accept/reject flow below.
-  async function addOne(product: RecommendedProduct) {
-    if (addingSlug) return;
-    setAddingSlug(product.slug);
-    try {
-      const variants = await fetchProductVariants(product.slug);
-      const variantId = variants.find((v) => v.stock > 0)?.id ?? variants[0]?.id;
-      if (!variantId) return;
-      await addToCart.mutateAsync({ variantId });
-      setAddedSlugs((prev) => new Set(prev).add(product.slug));
-    } finally {
-      setAddingSlug(null);
-    }
-  }
-
-  // History backfill for a resumed (or switched-to) conversation. Keyed on
-  // `activeConversationId` rather than firing once ever: switching
-  // conversations via the sidebar changes the Agent connection's `name`
-  // (useDiscoveryChat.ts), and this component's own local state has to
-  // reset to match — otherwise the previous conversation's messages/
-  // recommendation would linger under the new one. `primedFor` (the id
-  // last primed, not a boolean) both dedupes dev-mode StrictMode's
-  // double-invoke and detects a genuine conversation switch.
-  useEffect(() => {
-    if (connecting || primedFor.current === activeConversationId) return;
-    primedFor.current = activeConversationId;
-    setMessages([]);
-    setRecommendation(null);
-    setAcceptedSet(null);
-    setSuggestedReplies([]);
-    setAddedSlugs(new Set());
-    (async () => {
-      await agent.ready;
-      const history = await agent.call("getConversationHistory", []);
-      setMessages([{ speaker: "advisor", content: GREETING }, ...(history as ChatMessage[])]);
-
-      // Restore the "Recommended"/"Your set" sidebar too, not just the
-      // transcript — pendingRecommendationLabels/finalRecommendationLabels
-      // were always persisted server-side (state.ts), so a reload or a
-      // switch back to an older conversation shouldn't lose them.
-      const { pending, accepted } = await agent.call("getRecommendationState", []);
-      if (accepted) {
-        setAcceptedSet(accepted);
-      } else if (pending) {
-        setRecommendation({
-          kind: "recommendation",
-          message: pending.message,
-          forced: false,
-          degraded: false,
-          products: pending.products,
-        });
-      }
-    })();
-  }, [connecting, activeConversationId, agent]);
 
   useEffect(() => {
     requestAnimationFrame(() => {
@@ -156,51 +80,9 @@ export default function DiscoveryChat() {
     });
   }, [messages, busy]);
 
-  function applyResult(result: TurnResult) {
-    setMessages((prev) => [...prev, { speaker: "advisor", content: result.message }]);
-    setRecommendation(result.kind === "recommendation" ? result : null);
-    setSuggestedReplies(result.kind === "question" ? result.suggestedReplies : []);
-  }
-
-  async function ask(text: string) {
-    const clean = text.trim();
-    if (!clean || busy) return;
+  async function askAndClear(text: string) {
     setInput("");
-    setMessages((prev) => [...prev, { speaker: "shopper", content: clean }]);
-    setBusy(true);
-    try {
-      const result = await agent.call("submitTurn", [clean]);
-      applyResult(result);
-    } catch {
-      setMessages((prev) => [
-        ...prev,
-        { speaker: "advisor", content: "Something went wrong on my end — could you try that again?" },
-      ]);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function respond(accept: boolean) {
-    if (busy || !recommendation) return;
-    setBusy(true);
-    try {
-      const products = recommendation.products;
-      const result = await agent.call("respondToRecommendation", [accept]);
-      setRecommendation(null);
-      if (result.kind === "accepted") {
-        setAcceptedSet(products);
-      } else {
-        applyResult(result);
-      }
-    } catch {
-      setMessages((prev) => [
-        ...prev,
-        { speaker: "advisor", content: "Something went wrong on my end — could you try that again?" },
-      ]);
-    } finally {
-      setBusy(false);
-    }
+    await ask(text);
   }
 
   return (
@@ -335,7 +217,7 @@ export default function DiscoveryChat() {
                     <button
                       key={p}
                       type="button"
-                      onClick={() => ask(p)}
+                      onClick={() => askAndClear(p)}
                       className="tap-scale rounded-sm border border-line-strong px-3.5 py-2 text-sm text-ink"
                     >
                       {p}
@@ -351,7 +233,7 @@ export default function DiscoveryChat() {
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
-                    ask(input);
+                    askAndClear(input);
                   }
                 }}
                 type="text"
@@ -363,7 +245,7 @@ export default function DiscoveryChat() {
                 type="button"
                 variant="solid"
                 size="md"
-                onClick={() => ask(input)}
+                onClick={() => askAndClear(input)}
                 disabled={connecting || busy || !!acceptedSet || !input.trim()}
               >
                 Send

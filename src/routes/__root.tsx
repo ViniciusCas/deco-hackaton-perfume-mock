@@ -4,6 +4,7 @@ import { DecoRootLayout } from "@decocms/tanstack";
 import { getUserServerFn, USER_QUERY_KEY } from "../platform/user";
 import { CART_QUERY_KEY, getCartSsrServerFn } from "../platform/cart";
 import MinicartDrawer from "../components/minicart/MinicartDrawer";
+import DiscoveryBubble from "../components/discovery/DiscoveryBubble";
 import Header from "../sections/Header/Header";
 import Footer from "../sections/Footer/Footer";
 // @ts-ignore Vite ?url import
@@ -101,6 +102,7 @@ function RootLayout() {
         shippingNote="Complimentary shipping over $80 · Two samples with every order"
       />
       <MinicartDrawer />
+      <DiscoveryBubble />
       <Footer
         siteName={SITE_NAME}
         newsletterNote="New releases and refill restocks, once a month."
