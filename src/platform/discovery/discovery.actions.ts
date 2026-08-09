@@ -109,15 +109,30 @@ export const listCatalogGapsFn = createServerFn({ method: "GET" }).handler(
         createdAt: r.createdAt.toISOString(),
       }));
 
-    // Group zero-result rows by their exact filter combination — a
+    // Within a single round, the agent often issues several search_catalog
+    // calls with slightly different filter variations (widening a price
+    // cap, dropping a search term) while chasing the SAME shopper need —
+    // each of those is its own row with distinct `filters`, so grouping by
+    // exact filter match alone would show near-duplicate cards for what
+    // was really one empty-handed round. Collapse to at most one
+    // zero-result row per (conversationId, roundCount) first, keeping the
+    // most recent (most-refined) attempt as the representative — only
+    // then group by exact filter combination across rounds/shoppers.
+    const perRound = new Map<string, (typeof rows)[number]>();
+    for (const r of rows) {
+      if (r.kind !== "zero_result_query" || !r.filters) continue;
+      const roundKey = `${r.conversationId}:${r.roundCount}`;
+      if (!perRound.has(roundKey)) perRound.set(roundKey, r);
+    }
+
+    // Group the collapsed rows by their exact filter combination — a
     // single shopper's one-off empty query shouldn't read the same as
     // three different shoppers all hitting the same empty filter. Rows
     // arrive newest-first (the query's ORDER BY), so the first row seen
     // for a given key is always the most recent — that's the one kept
     // as the group's representative example.
     const groups = new Map<string, ZeroResultGroup>();
-    for (const r of rows) {
-      if (r.kind !== "zero_result_query" || !r.filters) continue;
+    for (const r of perRound.values()) {
       const key = JSON.stringify(r.filters);
       const existing = groups.get(key);
       if (existing) {
