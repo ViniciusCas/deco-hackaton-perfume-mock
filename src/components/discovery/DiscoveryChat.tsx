@@ -129,7 +129,7 @@ export default function DiscoveryChat() {
     (async () => {
       await agent.ready;
       const history = await agent.call("getConversationHistory", []);
-      if (history.length > 0) setMessages(history as ChatMessage[]);
+      setMessages([{ speaker: "advisor", content: GREETING }, ...(history as ChatMessage[])]);
 
       // Restore the "Recommended"/"Your set" sidebar too, not just the
       // transcript — pendingRecommendationLabels/finalRecommendationLabels
@@ -295,11 +295,6 @@ export default function DiscoveryChat() {
           </div>
 
           <div ref={scrollRef} className="flex flex-1 flex-col gap-4 overflow-y-auto p-6">
-            {!connecting && messages.length === 0 && (
-              <div className="max-w-[78%] self-start rounded-2xl rounded-tl-md bg-blush-deep px-5 py-4 text-sm leading-relaxed whitespace-pre-wrap text-ink">
-                {GREETING}
-              </div>
-            )}
             {messages.map((m, i) => (
               <div
                 key={i}
@@ -323,13 +318,16 @@ export default function DiscoveryChat() {
 
           <div className="border-t border-line p-4">
             {(() => {
-              // Static PROMPTS only for the very first message — there's no
-              // agent turn yet to source dynamic ones from. Every turn after
-              // that uses the Agent's own suggested_replies (schemas.ts),
-              // and the whole row disappears whenever the input itself is
-              // disabled — no point offering a reply that can't be sent.
+              // Static PROMPTS only before the shopper's first real message
+              // — messages[0] is always the greeting once primed, so "no
+              // conversation yet" is length <= 1, not 0. There's no agent
+              // turn yet to source dynamic ones from at that point; every
+              // turn after that uses the Agent's own suggested_replies
+              // (schemas.ts), and the whole row disappears whenever the
+              // input itself is disabled — no point offering a reply that
+              // can't be sent.
               const inputDisabled = connecting || busy || !!acceptedSet;
-              const chips = messages.length === 0 ? PROMPTS : suggestedReplies;
+              const chips = messages.length <= 1 ? PROMPTS : suggestedReplies;
               if (inputDisabled || chips.length === 0) return null;
               return (
                 <div className="mb-3 flex flex-wrap gap-2">
