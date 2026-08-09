@@ -26,7 +26,10 @@ import { useAddToCart } from "~/platform/cart";
  */
 
 const GREETING =
-  "Hi, tell me where you'll be wearing this — a normal work day, a night out, something for a gift — and I'll narrow the catalog down to a few worth trying.";
+  "Hi, I'm your scent assistant — think of me as a knowledgeable friend behind the counter. " +
+  "Tell me who this is for and where they'll wear it — a normal work day, a night out, a " +
+  "gift for someone special — and I'll find a few fragrances from our collection genuinely " +
+  "worth trying, not just the bestsellers.";
 
 const PROMPTS = [
   "Something for evenings",
@@ -292,7 +295,7 @@ export default function DiscoveryChat() {
           </div>
 
           <div ref={scrollRef} className="flex flex-1 flex-col gap-4 overflow-y-auto p-6">
-            {!connecting && (
+            {!connecting && messages.length === 0 && (
               <div className="max-w-[78%] self-start rounded-2xl rounded-tl-md bg-blush-deep px-5 py-4 text-sm leading-relaxed whitespace-pre-wrap text-ink">
                 {GREETING}
               </div>
