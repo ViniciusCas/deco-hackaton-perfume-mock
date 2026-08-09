@@ -80,12 +80,19 @@ export function useDiscoveryConversation({
   useEffect(() => {
     if (connecting || primedFor.current === activeConversationId) return;
     primedFor.current = activeConversationId;
-    setMessages([]);
     setRecommendation(null);
     setAcceptedSet(null);
     setSuggestedReplies([]);
     setAddedSlugs(new Set());
     setIsExistingConversation(false);
+    // Paint the greeting immediately rather than leaving the pane blank
+    // while `agent.ready` resolves below — it's a static client-side
+    // constant, not something that needs the network round-trip. That
+    // round-trip is near-instant once the Durable Object connection is
+    // already warm, but a genuinely cold one (e.g. the discovery bubble's
+    // very first open) can take a beat, and a blank pane during that beat
+    // reads as broken rather than loading.
+    setMessages([{ speaker: "advisor", content: GREETING }]);
     (async () => {
       await agent.ready;
       const history = await agent.call("getConversationHistory", []);
