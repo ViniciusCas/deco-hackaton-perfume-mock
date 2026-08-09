@@ -7,9 +7,8 @@ import ConversationTrace from "~/components/discovery/ConversationTrace";
 
 /**
  * Turns the discovery-agent's own conversations into an ops-facing signal
- * about the catalog, split into two sections with very different
- * evidentiary weight (schema.ts's discoveryGapKind comment has the full
- * reasoning):
+ * about the catalog, split into two views with very different evidentiary
+ * weight (schema.ts's discoveryGapKind comment has the full reasoning):
  * - Zero-result searches: hard facts — the exact filter combo a
  *   search_catalog call used when it got 0 rows back, grouped/counted by
  *   exact match so a single shopper's one-off filter doesn't read the
@@ -20,6 +19,10 @@ import ConversationTrace from "~/components/discovery/ConversationTrace";
  *   than counted/grouped.
  * Degraded (validation-exhaustion) turns are filtered out entirely before
  * either ever reaches this page (agent.ts's rejection branch).
+ *
+ * The two kinds sit behind a sidebar switch rather than stacked sections —
+ * they're different evidence types an ops reader picks between, not a
+ * single feed to scroll through.
  *
  * Every entry also carries its own trace: the shopper's opening ask
  * (initialRequest, stored directly on the row) plus an on-demand "View
@@ -34,6 +37,8 @@ import ConversationTrace from "~/components/discovery/ConversationTrace";
 export const Route = createFileRoute("/insights/catalog-gaps")({
   component: CatalogGapsPage,
 });
+
+type View = "zero-result" | "rejected";
 
 function relativeTime(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -66,9 +71,52 @@ function TraceToggle({ conversationId }: { conversationId: string }) {
   );
 }
 
+function SidebarNav({
+  view,
+  onChange,
+  zeroResultCount,
+  rejectedCount,
+}: {
+  view: View;
+  onChange: (v: View) => void;
+  zeroResultCount: number;
+  rejectedCount: number;
+}) {
+  const items: { key: View; label: string; count: number }[] = [
+    { key: "zero-result", label: "Zero-result searches", count: zeroResultCount },
+    { key: "rejected", label: "Rejected recommendations", count: rejectedCount },
+  ];
+  return (
+    <nav className="flex gap-2 overflow-x-auto sm:w-56 sm:shrink-0 sm:flex-col sm:overflow-visible">
+      {items.map((item) => (
+        <button
+          key={item.key}
+          type="button"
+          onClick={() => onChange(item.key)}
+          className={`tap-scale flex shrink-0 items-center justify-between gap-3 rounded-lg px-4 py-3 text-left text-sm transition-colors ${
+            view === item.key
+              ? "bg-accent text-black"
+              : "text-ink hover:bg-blush-deep/50"
+          }`}
+        >
+          <span className="font-medium">{item.label}</span>
+          <span
+            className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${
+              view === item.key ? "bg-black/10" : "bg-blush-deep text-muted"
+            }`}
+          >
+            {item.count}
+          </span>
+        </button>
+      ))}
+    </nav>
+  );
+}
+
 function CatalogGapsPage() {
   const { isAuthenticated, isLoading: userLoading } = useUser();
   const { summaries, zeroResultGroups, isLoading: gapsLoading } = useCatalogGaps(isAuthenticated);
+  const [view, setView] = useState<View>("zero-result");
 
   if (userLoading) {
     return (
@@ -93,13 +141,12 @@ function CatalogGapsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 pt-[90px] pb-14 sm:px-8 sm:pt-[110px]">
+    <div className="mx-auto max-w-5xl px-4 pt-[90px] pb-14 sm:px-8 sm:pt-[110px]">
       <div className="mb-8">
         <h1 className="font-display text-3xl font-light text-ink">Catalog gap signals</h1>
         <p className="mt-1 text-sm text-muted">
-          What the discovery chat couldn't satisfy — grouped, hard-fact searches first, then
-          the assistant's own read on why a recommendation didn't land. Every entry traces
-          back to the conversation it came from.
+          What the discovery chat couldn't satisfy. Every entry traces back to the conversation
+          it came from.
         </p>
       </div>
 
@@ -108,79 +155,86 @@ function CatalogGapsPage() {
           <span className="loading loading-spinner loading-lg" />
         </div>
       ) : (
-        <div className="flex flex-col gap-10">
-          <section>
-            <h2 className="mb-1 font-display text-lg font-medium text-ink">Zero-result searches</h2>
-            <p className="mb-4 text-xs text-muted">
-              Exact filter combinations that came back empty — counted by how many times the
-              same combination happened, across any number of shoppers.
-            </p>
-            {zeroResultGroups.length === 0 ? (
-              <div className="frost rounded-lg p-6 text-center text-sm text-muted">
-                No zero-result searches recorded yet.
-              </div>
+        <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:gap-10">
+          <SidebarNav
+            view={view}
+            onChange={setView}
+            zeroResultCount={zeroResultGroups.length}
+            rejectedCount={summaries.length}
+          />
+
+          <div className="min-w-0 flex-1">
+            {view === "zero-result" ? (
+              <section>
+                <p className="mb-4 text-xs text-muted">
+                  Exact filter combinations that came back empty — counted by how many times
+                  the same combination happened, across any number of shoppers.
+                </p>
+                {zeroResultGroups.length === 0 ? (
+                  <div className="frost rounded-lg p-6 text-center text-sm text-muted">
+                    No zero-result searches recorded yet.
+                  </div>
+                ) : (
+                  <ul className="flex flex-col gap-3">
+                    {zeroResultGroups.map((group) => (
+                      <li key={JSON.stringify(group.filters)} className="frost rounded-lg p-5">
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <p className="text-sm leading-relaxed text-ink">{group.summary}</p>
+                            {group.exampleInitialRequest && (
+                              <p className="mt-1.5 text-xs text-muted">
+                                From a conversation that started: “{group.exampleInitialRequest}”
+                              </p>
+                            )}
+                            <p className="mt-1 text-xs text-muted">
+                              Last seen {relativeTime(group.lastSeenAt)}
+                            </p>
+                          </div>
+                          <span className="shrink-0 rounded-full bg-rose px-2.5 py-1 text-xs font-medium text-black">
+                            ×{group.count}
+                          </span>
+                        </div>
+                        <TraceToggle conversationId={group.exampleConversationId} />
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
             ) : (
-              <ul className="flex flex-col gap-3">
-                {zeroResultGroups.map((group) => (
-                  <li key={JSON.stringify(group.filters)} className="frost rounded-lg p-5">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <p className="text-sm leading-relaxed text-ink">{group.summary}</p>
-                        {group.exampleInitialRequest && (
+              <section>
+                <p className="mb-4 text-xs text-muted">
+                  The assistant's own summary of what a shopper wanted and why the pick it made
+                  didn't land — one entry per rejected round.
+                </p>
+                {summaries.length === 0 ? (
+                  <div className="frost rounded-lg p-6 text-center text-sm text-muted">
+                    No rejected-recommendation summaries recorded yet.
+                  </div>
+                ) : (
+                  <ul className="flex flex-col gap-3">
+                    {summaries.map((s) => (
+                      <li key={s.id} className="frost rounded-lg p-5">
+                        <div className="mb-2 flex items-center justify-between text-xs text-muted">
+                          <span>
+                            Conversation {s.conversationId.slice(0, 8)}
+                            {s.roundCount !== null ? ` · round ${s.roundCount + 1}` : ""}
+                          </span>
+                          <span>{relativeTime(s.createdAt)}</span>
+                        </div>
+                        <p className="text-sm leading-relaxed text-ink">{s.summary}</p>
+                        {s.initialRequest && (
                           <p className="mt-1.5 text-xs text-muted">
-                            From a conversation that started: “{group.exampleInitialRequest}”
+                            Started as: “{s.initialRequest}”
                           </p>
                         )}
-                        <p className="mt-1 text-xs text-muted">
-                          Last seen {relativeTime(group.lastSeenAt)}
-                        </p>
-                      </div>
-                      <span className="shrink-0 rounded-full bg-rose px-2.5 py-1 text-xs font-medium text-black">
-                        ×{group.count}
-                      </span>
-                    </div>
-                    <TraceToggle conversationId={group.exampleConversationId} />
-                  </li>
-                ))}
-              </ul>
+                        <TraceToggle conversationId={s.conversationId} />
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
             )}
-          </section>
-
-          <section>
-            <h2 className="mb-1 font-display text-lg font-medium text-ink">
-              Rejected recommendations
-            </h2>
-            <p className="mb-4 text-xs text-muted">
-              The assistant's own summary of what a shopper wanted and why the pick it made
-              didn't land — one entry per rejected round.
-            </p>
-            {summaries.length === 0 ? (
-              <div className="frost rounded-lg p-6 text-center text-sm text-muted">
-                No rejected-recommendation summaries recorded yet.
-              </div>
-            ) : (
-              <ul className="flex flex-col gap-3">
-                {summaries.map((s) => (
-                  <li key={s.id} className="frost rounded-lg p-5">
-                    <div className="mb-2 flex items-center justify-between text-xs text-muted">
-                      <span>
-                        Conversation {s.conversationId.slice(0, 8)}
-                        {s.roundCount !== null ? ` · round ${s.roundCount + 1}` : ""}
-                      </span>
-                      <span>{relativeTime(s.createdAt)}</span>
-                    </div>
-                    <p className="text-sm leading-relaxed text-ink">{s.summary}</p>
-                    {s.initialRequest && (
-                      <p className="mt-1.5 text-xs text-muted">
-                        Started as: “{s.initialRequest}”
-                      </p>
-                    )}
-                    <TraceToggle conversationId={s.conversationId} />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
+          </div>
         </div>
       )}
     </div>

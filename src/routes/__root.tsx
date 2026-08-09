@@ -1,4 +1,4 @@
-import { createRootRouteWithContext } from "@tanstack/react-router";
+import { createRootRouteWithContext, useRouterState } from "@tanstack/react-router";
 import type { QueryClient } from "@tanstack/react-query";
 import { DecoRootLayout } from "@decocms/tanstack";
 import { getUserServerFn, USER_QUERY_KEY } from "../platform/user";
@@ -86,6 +86,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 });
 
 function RootLayout() {
+  // The insights pages are an ops surface for reading what the discovery
+  // agent has surfaced, not a shopper-facing page — the bubble would be
+  // both noise and a confusing "chat about the chat" loop there.
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const hideDiscoveryBubble = pathname.startsWith("/insights");
+
   return (
     <DecoRootLayout lang="en" siteName={SITE_NAME}>
       {/*
@@ -102,7 +108,7 @@ function RootLayout() {
         shippingNote="Complimentary shipping over $80 · Two samples with every order"
       />
       <MinicartDrawer />
-      <DiscoveryBubble />
+      {!hideDiscoveryBubble && <DiscoveryBubble />}
       <Footer
         siteName={SITE_NAME}
         newsletterNote="New releases and refill restocks, once a month."
